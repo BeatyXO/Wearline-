@@ -9,13 +9,22 @@ permissions:
 
 jobs:
   apply:
-    if: ${{ hashFiles('.pivot_payload/part00') != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Detect staged payload
+        id: payload
+        shell: bash
+        run: |
+          if [ -f .pivot_payload/part00 ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Materialize prepared pivot
+        if: steps.payload.outputs.present == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -39,6 +48,7 @@ jobs:
           python scripts/check_stale_terms.py
           python -m py_compile contracts/Wearline.py tests/direct_mode_suite.py tests/test_source_invariants.py
       - name: Commit materialized pivot
+        if: steps.payload.outputs.present == 'true'
         shell: bash
         run: |
           set -euo pipefail
