@@ -35,4 +35,4 @@ The web app is UX, not settlement authority. The contract remains authoritative 
 
 ## Verification
 
-The GenVM linter passes, and `gltest tests/test_direct.py -q` exercises the deployed contract runtime in Direct Mode without network transactions. This covers authorization, state transitions, deterministic deductions, validator reassessment, and hostile evidence cases. StudioNet deployment and transfer finality require separate live-network proof.
+The GenVM linter passes, and `gltest tests/direct_mode_suite.py -q` exercises the contract in Direct Mode without network transactions. This covers authorization, state transitions, deterministic deductions, validator reassessment, and hostile evidence cases. StudioNet deployment and transfer finality require separate live-network proof.

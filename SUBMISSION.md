@@ -17,7 +17,7 @@ The contract accepts HTTPS evidence URLs and validates 64-character hexadecimal 
 ## Verification completed in this workspace
 
 - `genvm-lint check contracts/Wearline.py`: passed locally (3 checks, 13 methods).
-- `gltest tests/test_direct.py -q`: 20 GenLayer Direct Mode tests passed, including authorization, agreement and funding rules, all classifications and deduction percentages, inconclusive waiver, validator reassessment, settlement arithmetic, and adversarial evidence responses.
+- `gltest tests/direct_mode_suite.py -q`: 20 GenLayer Direct Mode tests passed, including authorization, agreement and funding rules, all classifications and deduction percentages, inconclusive waiver, validator reassessment, settlement arithmetic, and adversarial evidence responses.
 - `python -m unittest discover -s tests -v`: 9 supplementary source-invariant tests passed.
 - Frontend `npm run typecheck` and `npm run build`: passed in GitHub Actions run 35441773111 for commit `8af51a9656ea4a5934a5af4e742ff04e81f43647`. Further pending edits require a fresh CI run.
 
