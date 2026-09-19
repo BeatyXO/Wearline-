@@ -29,11 +29,10 @@ The repository-level [`vercel.json`](vercel.json) configures Vercel for the fron
 | Build command | `npm --prefix frontend run build` |
 | Output directory | `frontend/dist` |
 
-Set these production environment variables to connect the frontend to the canonical contract and StudioNet:
+Set this production environment variable to connect the frontend to the canonical contract. The frontend is pinned to StudioNet chain `61999` in code:
 
 ```env
 VITE_WEARLINE_CONTRACT_ADDRESS=0xBB03057Ff1496E7f53a73F88100D855Ed2b7ca06
-VITE_GENLAYER_NETWORK=studionet
 ```
 
 The frontend implements the live agreement lifecycle and passes local typecheck and production build. Vercel account verification could not reach the provider from this environment because outbound network access was denied; no deployment or production URL is claimed.
@@ -42,7 +41,7 @@ The frontend implements the live agreement lifecycle and passes local typecheck 
 
 The four-item agreement (`1`) was created, sealed, funded with exactly `1 GEN`, adjudicated, and settled. It produced `UNCHANGED` (0), `NEW_DAMAGE` severity 1 (`0.0625 GEN`), `NEW_DAMAGE` severity 3 (`0.25 GEN`), and `INCONCLUSIVE` (0). A pre-waiver settlement finalized with execution `ERROR`; the owner waiver finalized; settlement then finalized successfully. Its `0.3125 GEN` owner deduction plus `0.6875 GEN` renter refund equals the `1 GEN` frozen deposit. A duplicate settlement finalized with execution `ERROR` and did not change balances.
 
-A second agreement (`2`) used a separate diffuse-fading evidence pair to verify `NORMAL_WEAR`, severity 0 and deduction 0. Its exact `0.25 GEN` deposit was fully refunded to the renter after settlement. Both lifecycle agreements are settled; the contract balance is zero.
+A second agreement (`2`) used a separate diffuse-fading evidence pair to verify `NORMAL_WEAR`, severity 0 and deduction 0. A third agreement (`3`) demonstrated all four classes together and settled a `0.25 GEN` deposit with `0.0625 GEN` to the owner and `0.1875 GEN` to the renter. All three agreements are settled; the contract balance is zero.
 
 The classification of the first light-scuff example was `NEW_DAMAGE` severity 1. It is recorded as returned by consensus; it was not relabeled to fit the intended example. The second pair produced the live `NORMAL_WEAR` result.
 

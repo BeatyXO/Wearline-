@@ -70,7 +70,7 @@ Set `VITE_WEARLINE_CONTRACT_ADDRESS=0xBB03057Ff1496E7f53a73F88100D855Ed2b7ca06` 
 
 The contract intentionally follows current GenLayer storage and consensus patterns: storage-safe dataclasses, `TreeMap`, fixed-width integers, storage copied to memory before non-deterministic work, external web/LLM calls inside the consensus block, and side effects only after consensus.
 
-The local GenVM linter and GenLayer Direct Mode tests pass. One contract is deployed to StudioNet; source parity and two live lifecycle agreements are verified in [DEPLOYMENT.md](DEPLOYMENT.md) and [SUBMISSION.md](SUBMISSION.md). Direct Mode runs against the contract runtime without sending transactions.
+The local GenVM linter and GenLayer Direct Mode tests pass. One contract is deployed to StudioNet; source parity and three live lifecycle agreements are verified in [DEPLOYMENT.md](DEPLOYMENT.md) and [SUBMISSION.md](SUBMISSION.md), including one four-item lifecycle that returned all four classifications. Direct Mode runs against the contract runtime without sending transactions.
 
 ## Evidence safety
 

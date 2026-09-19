@@ -42,7 +42,7 @@ The sum of caps must not exceed the deposit. Settlement requires all items to be
 
 Direct Mode runs against the GenLayer contract runtime without live transactions. `gltest tests/direct_mode_suite.py -q` passed **20 tests**, including authorization and funding rules, post-seal immutability, all four classifications, exact 25/60/100% arithmetic, fail-closed inconclusive behavior, independent validator reassessment, duplicate adjudication/settlement protections, payout arithmetic, and evidence mismatch, inaccessible response, redirects/non-success status, unsupported MIME, identical images, and visible prompt injection.
 
-`genvm-lint check contracts/Wearline.py` passed (3 checks; 13 methods). Nine supplementary source-invariant tests passed. GitHub Actions passed source checks and the frontend production typecheck/build in run [35447062790](https://github.com/BeatyXO/Wearline-/actions/runs/35447062790); the later evidence commits also passed Actions, latest [35447789211](https://github.com/BeatyXO/Wearline-/actions/runs/35447789211).
+`genvm-lint check contracts/Wearline.py` passed (3 checks; 13 methods). Nine supplementary source-invariant tests passed. GitHub Actions passed source checks and the frontend production typecheck/build; the latest verified run is linked from the repository's Actions page.
 
 ## Canonical deployment and source parity
 
@@ -56,7 +56,7 @@ Direct Mode runs against the GenLayer contract runtime without live transactions
 
 ## StudioNet lifecycle proof
 
-The lifecycle used two owner/renter agreements on the one canonical CA. Evidence URLs are immutable GitHub raw URLs pinned to evidence commits; recorded digests are the hashes stored on-chain.
+The lifecycle used three owner/renter agreements on the one canonical CA. Evidence URLs are immutable GitHub raw URLs pinned to evidence commits; recorded digests are the hashes stored on-chain.
 
 ### Agreement 1: four-item lifecycle
 
@@ -88,6 +88,21 @@ Agreement `2` used commit-pinned diffuse upholstery fading images. StudioNet cla
 
 Agreement `2` ended `SETTLED`; `0 GEN` went to the owner and `0.25 GEN` returned to the renter. Final contract balance remained `0 GEN`.
 
+### Agreement 3: four-class proof in one lifecycle
+
+Agreement `3` used four registered items, each with a `0.0625 GEN` cap, and the renter funded the exact `0.25 GEN` deposit. All four requested classes were produced together by finalized StudioNet adjudications:
+
+| Item | Consensus result | Severity | Deduction |
+| --- | --- | ---: | ---: |
+| Identical laptop-cover images | `UNCHANGED` | 0 | 0 GEN |
+| Diffuse upholstery fading | `NORMAL_WEAR` | 0 | 0 GEN |
+| Cracked display | `NEW_DAMAGE` | 3 | `0.0625 GEN` (100% of cap) |
+| Blurred chair checkout | `INCONCLUSIVE` | 0 | 0 GEN |
+
+The pre-waiver settlement transaction [`0x2157455e773b8d2da0c215ba0b271af2764596e019b2184291a8217837481c53`](https://explorer-studio.genlayer.com/tx/0x2157455e773b8d2da0c215ba0b271af2764596e019b2184291a8217837481c53) finalized with execution `ERROR`, confirming the fail-closed block. Owner waiver [`0xcd14410f48d367a95c15f49a506487a83b0120ea472f5b44ca5b21cf80d1dc9e`](https://explorer-studio.genlayer.com/tx/0xcd14410f48d367a95c15f49a506487a83b0120ea472f5b44ca5b21cf80d1dc9e) finalized successfully. Settlement [`0x7cf6f9c4a52c2a0ea22e1a374ef743790d0173957912ba753d85262a923ea4b1`](https://explorer-studio.genlayer.com/tx/0x7cf6f9c4a52c2a0ea22e1a374ef743790d0173957912ba753d85262a923ea4b1) finalized with successful execution and set the agreement to `SETTLED`.
+
+The settlement emitted two finalized EVM transfers with successful receipt status `0x1`: `0.0625 GEN` to the owner ([transfer](https://explorer-studio.genlayer.com/tx/0x0ba07835332706717f9809a8faccd768dd4d4e90c23f30226467eeafbc664b28)) and `0.1875 GEN` to the renter ([refund](https://explorer-studio.genlayer.com/tx/0x8b78495bc7a9fae3fafb71814ba86bf22e3536ef54ba89a12f513d5afebd2cf9)). The values sum to the `0.25 GEN` frozen deposit. The contract balance is `0 GEN`; observed owner and renter balances after this lifecycle were `45.375 GEN` and `4.625 GEN` respectively.
+
 ### Transaction ledger
 
 All listed calls were inspected in the [canonical contract transaction list](https://explorer-studio.genlayer.com/address/0xBB03057Ff1496E7f53a73F88100D855Ed2b7ca06). Except where marked `ERROR`, calls finalized with successful execution.
@@ -114,6 +129,16 @@ All listed calls were inspected in the [canonical contract transaction list](htt
 | 2 | Adjudicate normal-wear item | `0x8cefc17293c949dfb6ff648a5e383798fe3b998fcd54a40269165779142cdbd1` |
 | 2 | Settle | `0x6fed41ff83bf584eedcacf28dd284c47ce3fdea7a85bcc0902bca0600a4544ac` |
 | 2 | Renter refund send | `0x522f0b722cfd09fdd2665f3d292570e56557e50eae8a20fc5217d5245b1f5a3d` |
+| 3 | Create | `0x9896285456cc65a9cad0e710fb3997d71380d39c8ffa0db62e4626f7e5438fa7` |
+| 3 | Add items 0–3 | `0xac2edf0d0b96dd48fd0f4432a9b1b85d1208f0442f4d0629fac43ec33ffe89c8`, `0xc8b6325e66e21d9b3c0f3744fc96c34689ad91c6a9ab1c999a25e22cf3584059`, `0x1a48682061c557390e0b099c3f8084b4f9a83f1c17884a5e4b721140c8c1ce2e`, `0xc64f279e9e0baef81c46f0035b860820c8d48bf55e13304cf24409ea2983325a` |
+| 3 | Seal | `0xa6299e284b69c826207dc6973cc85cfb67aff4024ec7f6dc96efa5e03b1aa6db` |
+| 3 | Exact 0.25 GEN funding | `0x5c73588f0d054414188d0999dd3c5be73695699dc93849543b880098dc4f81f9` |
+| 3 | Checkout evidence 0–3 | `0xd2bfcbf8f0fbc1860467ee044a7c2c239b21ff0977a0d93ae441ed8bc1d15c2c`, `0xfb85c49f8568d2dc26a52f0f2609f71e1af5715d3c58a476ba59f1c6f5752e14`, `0xb967dc85a7d2866b1fadf1ca613a63fe981f85e9adc1f359283433d6c3e9ca6f`, `0x055484d28d581ca5167d34ff3e0a8dbd76c25330476fb84d221da19886f57623` |
+| 3 | Adjudicate 0–3 | `0x47d741b2879d062d32e98e485122b836566f111cb91e3c3e4cbdf957110c2000`, `0x12d2ca17acb6467616559c06ba2470e7bfa8714e0006eaf60f8665cd6f771807`, `0x17931eeffab6bc98be1d82c9536739f526c37f0ba7dfbf17464c99efef215d8c`, `0xb09b9542a1bde2c59d55b980e54a2c7081711e1356ffc97576b7a32e62576cdc` |
+| 3 | Settlement blocked before waiver (`ERROR`) | `0x2157455e773b8d2da0c215ba0b271af2764596e019b2184291a8217837481c53` |
+| 3 | Owner inconclusive waiver | `0xcd14410f48d367a95c15f49a506487a83b0120ea472f5b44ca5b21cf80d1dc9e` |
+| 3 | Settle | `0x7cf6f9c4a52c2a0ea22e1a374ef743790d0173957912ba753d85262a923ea4b1` |
+| 3 | Owner deduction / renter refund | `0x0ba07835332706717f9809a8faccd768dd4d4e90c23f30226467eeafbc664b28`, `0x8b78495bc7a9fae3fafb71814ba86bf22e3536ef54ba89a12f513d5afebd2cf9` |
 
 ## Evidence digests stored on-chain
 
@@ -131,6 +156,6 @@ The first eight image URLs are pinned to evidence commit `d080e6cc39cb782eddaa9e
 | Agreement 2 normal-wear baseline | `1432c4c18a88fc12aa3fdc0dd2e5a1817bc75f2387d8057e51d69e749c21f4a1` |
 | Agreement 2 normal-wear checkout | `882567f7ebd8175dcb96e384cfc2f0f0191d7dc32a8f21b20debd1644941235b` |
 
-## Remaining product work
+## Release status
 
-The live contract deployment and two StudioNet lifecycles are verified. The frontend now reads live agreement and item state and supports the complete creation, evidence, exact funding, adjudication, waiver, and settlement workflow. Local typecheck and production build pass. Vercel deployment remains unverified, so no frontend URL is claimed. Configure `VITE_WEARLINE_CONTRACT_ADDRESS` with the canonical CA.
+The live contract deployment and three StudioNet lifecycles are verified, including all four classifications together in agreement `3`. The frontend reads live agreement and item state and supports the complete creation, evidence, exact funding, adjudication, waiver, and settlement workflow. Local typecheck and production build pass. Vercel deployment remains unverified because this environment could not reach Vercel; no frontend URL is claimed. The required Vercel build settings and `VITE_WEARLINE_CONTRACT_ADDRESS` are recorded in [DEPLOYMENT.md](DEPLOYMENT.md).

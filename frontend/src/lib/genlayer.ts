@@ -64,7 +64,12 @@ export async function readWearline(client: ReturnType<typeof createClient>, func
 export async function waitForWearlineTransaction(client: ReturnType<typeof createClient>, txHash: string) {
   // genlayer-js 1.1.8 exposes FINALIZED in its runtime enum and README but
   // omits it from the wait method's generated status union.
-  const tx = await client.waitForTransactionReceipt({ hash: txHash as never, status: TransactionStatus.FINALIZED as never })
+  const tx = await client.waitForTransactionReceipt({
+    hash: txHash as never,
+    status: TransactionStatus.FINALIZED as never,
+    interval: 5_000,
+    retries: 100,
+  })
   const receipt = tx as {
     statusName?: string
     status_name?: string
