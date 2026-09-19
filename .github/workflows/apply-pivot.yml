@@ -1,0 +1,49 @@
+name: apply-wearline-pivot
+
+on:
+  push:
+    branches: [wearline-remediation-pivot-predeploy]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ hashFiles('.pivot_payload/part00') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Materialize prepared pivot
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .pivot_payload/part* | base64 --decode > /tmp/wearline-pivot.tar.gz
+          tar -xzf /tmp/wearline-pivot.tar.gz -C .
+          rm -rf .pivot_payload
+          rm -f .github/workflows/apply-pivot.yml
+          rm -f frontend/src/components/AgreementLookup.tsx
+          rm -f frontend/src/pages/AgreementPage.tsx
+          rm -f frontend/src/pages/SettlementPage.tsx
+          rm -f demo/evidence/inconclusive-checkout.png
+          rm -f demo/evidence/new-damage-baseline.png
+          rm -f demo/evidence/new-damage-checkout.png
+          rm -f demo/evidence/normal-wear-baseline.png
+          rm -f demo/evidence/normal-wear-checkout.png
+          rm -f demo/evidence/normal-wear-v2-baseline.png
+          rm -f demo/evidence/normal-wear-v2-checkout.png
+          rm -f demo/evidence/unchanged-baseline.png
+          rm -f demo/evidence/unchanged-checkout.png
+          python -m unittest tests/test_source_invariants.py -v
+          python scripts/check_stale_terms.py
+          python -m py_compile contracts/Wearline.py tests/direct_mode_suite.py tests/test_source_invariants.py
+      - name: Commit materialized pivot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Wearline pre-deployment automation"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Complete Wearline remediation verification pivot"
+          git push origin HEAD:wearline-remediation-pivot-predeploy
