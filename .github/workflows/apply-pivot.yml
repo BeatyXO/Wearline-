@@ -44,8 +44,12 @@ jobs:
           rm -f demo/evidence/unchanged-baseline.png
           rm -f demo/evidence/unchanged-checkout.png
           git checkout HEAD -- .github/workflows/ci.yml .github/workflows/apply-pivot.yml
+          cp .github/workflows/apply-pivot.yml /tmp/apply-pivot.yml
+          rm .github/workflows/apply-pivot.yml
           python -m unittest tests/test_source_invariants.py -v
           python scripts/check_stale_terms.py
+          mkdir -p .github/workflows
+          cp /tmp/apply-pivot.yml .github/workflows/apply-pivot.yml
           python -m py_compile contracts/Wearline.py tests/direct_mode_suite.py tests/test_source_invariants.py
       - name: Commit materialized pivot
         if: steps.payload.outputs.present == 'true'
