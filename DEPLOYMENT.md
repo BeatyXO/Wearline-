@@ -19,13 +19,24 @@ The contract source commit remains `e4ca067…`; later `main` commits add only d
 
 ## Frontend configuration
 
-Set the production build variable below to connect the frontend to the canonical contract:
+The repository-level [`vercel.json`](vercel.json) configures Vercel for the frontend in this repository:
+
+| Setting | Value |
+| --- | --- |
+| Root directory | repository root |
+| Framework preset | Vite |
+| Install command | `npm --prefix frontend install` |
+| Build command | `npm --prefix frontend run build` |
+| Output directory | `frontend/dist` |
+
+Set these production environment variables to connect the frontend to the canonical contract and StudioNet:
 
 ```env
 VITE_WEARLINE_CONTRACT_ADDRESS=0xBB03057Ff1496E7f53a73F88100D855Ed2b7ca06
+VITE_GENLAYER_NETWORK=studionet
 ```
 
-The frontend implements the live agreement lifecycle and passes local typecheck and production build. It has not yet been deployed to Vercel; no production URL is claimed.
+The frontend implements the live agreement lifecycle and passes local typecheck and production build. Vercel account verification could not reach the provider from this environment because outbound network access was denied; no deployment or production URL is claimed.
 
 ## Verified StudioNet lifecycle
 
