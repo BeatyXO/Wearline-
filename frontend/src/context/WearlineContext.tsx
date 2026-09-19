@@ -1,5 +1,5 @@
 import { FormEvent, ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { assertStudioNet, connectWallet, CONTRACT_ADDRESS, HAS_CONTRACT, readClient, readWearline, shortAddress, writeWearline } from '../lib/genlayer'
+import { assertStudioNet, connectWallet, CONTRACT_ADDRESS, HAS_CONTRACT, readClient, readWearline, restoreWallet, revokeWalletPermission, shortAddress, STUDIONET_CHAIN_ID, switchToStudioNet, walletClientForAccount, writeWearline } from '../lib/genlayer'
 import { sha256File } from '../lib/hash'
 
 export type Raw = Record<string, unknown>
@@ -33,7 +33,7 @@ export function digest(value:string) {
 }
 
 type Ctx = {
-  wallet:string; client:any; agreementId:string; agreement:Agreement|null; items:Item[]; busy:boolean; loading:boolean;
+  wallet:string; client:any; agreementId:string; agreement:Agreement|null; items:Item[]; busy:boolean; loading:boolean; wrongNetwork:boolean;
   error:string; notice:string; txHash:string; live:boolean; contractLabel:string; explorerAddress:string; explorerTx:string;
   owner:boolean; renterRole:boolean; party:boolean; unresolved:number; stepIndex:number;
   property:string; renter:string; deposit:string; policy:string; label:string; baselineUrl:string; baselineHash:string; cap:string;
@@ -42,7 +42,8 @@ type Ctx = {
   setLabel:(v:string)=>void; setBaselineUrl:(v:string)=>void; setBaselineHash:(v:string)=>void; setCap:(v:string)=>void;
   setCheckoutUrls:(v:Record<number,string>)=>void; setCheckoutHashes:(v:Record<number,string>)=>void;
   setAgreementId:(v:string)=>void; setError:(v:string)=>void;
-  connect:()=>Promise<void>; refresh:(id?:string, activeClient?:any)=>Promise<void>; transact:(name:string,args:unknown[],value?:bigint)=>Promise<string|undefined>;
+  connect:()=>Promise<void>; disconnect:()=>Promise<void>; switchNetwork:()=>Promise<void>;
+  refresh:(id?:string, activeClient?:any)=>Promise<void>; transact:(name:string,args:unknown[],value?:bigint)=>Promise<string|undefined>;
   createAgreement:(e:FormEvent)=>Promise<void>; addItem:(e:FormEvent)=>Promise<void>; hashUrl:(raw:string,onHash:(s:string)=>void)=>Promise<void>;
 }
 
@@ -51,6 +52,7 @@ const WearlineContext=createContext<Ctx|null>(null)
 export function WearlineProvider({children}:{children:ReactNode}) {
   const initialId = new URLSearchParams(window.location.search).get('id')?.replace(/\D/g,'') ?? ''
   const [wallet,setWallet]=useState(''), [client,setClient]=useState<ReturnType<typeof readClient>|any>(null)
+  const [wrongNetwork,setWrongNetwork]=useState(false)
   const [agreementIdState,setAgreementIdState]=useState(initialId),[agreement,setAgreement]=useState<Agreement|null>(null),[items,setItems]=useState<Item[]>([])
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[txHash,setTxHash]=useState('')
   const [property,setProperty]=useState(''),[renter,setRenter]=useState(''),[deposit,setDeposit]=useState(''),[policy,setPolicy]=useState(POLICY_DEFAULT)
@@ -60,6 +62,10 @@ export function WearlineProvider({children}:{children:ReactNode}) {
   const live=HAS_CONTRACT
   const contractLabel=useMemo(()=>CONTRACT_ADDRESS?shortAddress(CONTRACT_ADDRESS):'Contract not configured',[])
   const explorerAddress=CONTRACT_ADDRESS?`${EXPLORER}/address/${CONTRACT_ADDRESS}`:'#'
+
+  const clearWalletState=useCallback(()=>{
+    setWallet('');setClient(null);setWrongNetwork(false);setAgreement(null);setItems([]);setTxHash('')
+  },[])
 
   const setAgreementId=useCallback((value:string)=>{
     const id=value.replace(/\D/g,'')
@@ -85,18 +91,78 @@ export function WearlineProvider({children}:{children:ReactNode}) {
     finally { setLoading(false) }
   },[agreementIdState,client,live])
 
-  useEffect(()=>{ if(client&&agreementIdState) void refresh(agreementIdState,client) },[client,agreementIdState,refresh])
+  useEffect(()=>{ if(client&&agreementIdState&&!wrongNetwork) void refresh(agreementIdState,client) },[client,agreementIdState,wrongNetwork,refresh])
+
   useEffect(()=>{
-    const provider=window.ethereum as {on?:(name:string,cb:(v:unknown)=>void)=>void;removeListener?:(name:string,cb:(v:unknown)=>void)=>void}|undefined
-    const accounts=(value:unknown)=>{const a=Array.isArray(value)?str(value[0]):'';setWallet(a);setClient(null);setAgreement(null);setItems([])}
-    const chain=()=>{setClient(null);setAgreement(null);setItems([]);setNotice('Wallet network changed. Reconnect on StudioNet 61999.')}
-    provider?.on?.('accountsChanged',accounts);provider?.on?.('chainChanged',chain)
-    return ()=>{provider?.removeListener?.('accountsChanged',accounts);provider?.removeListener?.('chainChanged',chain)}
+    let active=true
+    void (async()=>{
+      try {
+        const restored=await restoreWallet()
+        if(!active||!restored) return
+        setWallet(restored.address);setClient(restored.client);setWrongNetwork(restored.wrongNetwork)
+        if(restored.wrongNetwork) setNotice('Wallet restored. Switch to GenLayer StudioNet 61999 to continue.')
+      } catch(e) {
+        if(active) setError(e instanceof Error?e.message:'Unable to restore the authorised wallet session.')
+      }
+    })()
+    return ()=>{active=false}
   },[])
 
-  async function connect(){setError('');try{const c=await connectWallet();setWallet(c.address);setClient(c.client);setNotice('Wallet connected to StudioNet 61999.')}catch(e){setError(e instanceof Error?e.message:'Wallet connection failed.')}}
+  useEffect(()=>{
+    const provider=window.ethereum as {
+      request?:(args:{method:string;params?:unknown[]})=>Promise<unknown>
+      on?:(name:string,cb:(v:unknown)=>void)=>void
+      removeListener?:(name:string,cb:(v:unknown)=>void)=>void
+    }|undefined
+
+    const accounts=async(value:unknown)=>{
+      const address=Array.isArray(value)?str(value[0]):''
+      if(!address){clearWalletState();setNotice('Wallet disconnected from Wearline.');return}
+      setWallet(address);setError('')
+      try {
+        const chainId=await provider?.request?.({method:'eth_chainId'})
+        if(String(chainId).toLowerCase()!==STUDIONET_CHAIN_ID){
+          setClient(null);setWrongNetwork(true);setNotice('Wallet account changed. Switch to GenLayer StudioNet 61999 to continue.');return
+        }
+        const nextClient=await walletClientForAccount(address)
+        setClient(nextClient);setWrongNetwork(false);setNotice('Wallet account updated on StudioNet 61999.')
+      } catch(e){setClient(null);setError(e instanceof Error?e.message:'Unable to restore the changed wallet account.')}
+    }
+
+    const chain=async(value:unknown)=>{
+      if(!wallet) return
+      if(String(value).toLowerCase()!==STUDIONET_CHAIN_ID){
+        setClient(null);setWrongNetwork(true);setError('');setNotice('Wallet is connected, but GenLayer StudioNet 61999 is required.')
+        return
+      }
+      try {
+        const nextClient=await walletClientForAccount(wallet)
+        setClient(nextClient);setWrongNetwork(false);setError('');setNotice('Back on GenLayer StudioNet 61999.')
+      } catch(e){setClient(null);setError(e instanceof Error?e.message:'Unable to reconnect to StudioNet.')}
+    }
+
+    provider?.on?.('accountsChanged',accounts);provider?.on?.('chainChanged',chain)
+    return ()=>{provider?.removeListener?.('accountsChanged',accounts);provider?.removeListener?.('chainChanged',chain)}
+  },[wallet,clearWalletState])
+
+  async function connect(){setError('');try{const c=await connectWallet();setWallet(c.address);setClient(c.client);setWrongNetwork(false);setNotice('Wallet connected to StudioNet 61999.')}catch(e){setError(e instanceof Error?e.message:'Wallet connection failed.')}}
+
+  async function switchNetwork(){setError('');try{
+    if(!wallet) throw new Error('Connect a wallet first.')
+    await switchToStudioNet()
+    const nextClient=await walletClientForAccount(wallet)
+    setClient(nextClient);setWrongNetwork(false);setNotice('Connected to GenLayer StudioNet 61999.')
+  }catch(e){setError(e instanceof Error?e.message:'Unable to switch to StudioNet.')}}
+
+  async function disconnect(){
+    setError('')
+    const revoked=await revokeWalletPermission()
+    clearWalletState()
+    setNotice(revoked?'Wallet permission revoked and Wearline disconnected.':'Wearline disconnected locally. Your wallet may still list this site as authorised.')
+  }
+
   async function transact(name:string,args:unknown[],value?:bigint){
-    if(!client) throw new Error('Connect a StudioNet wallet before continuing.')
+    if(!client||wrongNetwork) throw new Error('GenLayer StudioNet 61999 is required before continuing.')
     if(locked.current) return
     locked.current=true;setBusy(true);setError('');setNotice('');setTxHash('')
     try{
@@ -130,13 +196,13 @@ export function WearlineProvider({children}:{children:ReactNode}) {
     onHash(await sha256File(new File([blob],'evidence',{type:blob.type})))
   }catch(e){setError(e instanceof Error?e.message:'Could not hash evidence URL bytes. Enter the verified SHA-256 manually.')}}
 
-  const owner=Boolean(wallet&&agreement&&wallet.toLowerCase()===agreement.owner.toLowerCase())
-  const renterRole=Boolean(wallet&&agreement&&wallet.toLowerCase()===agreement.renter.toLowerCase())
+  const owner=Boolean(!wrongNetwork&&wallet&&agreement&&wallet.toLowerCase()===agreement.owner.toLowerCase())
+  const renterRole=Boolean(!wrongNetwork&&wallet&&agreement&&wallet.toLowerCase()===agreement.renter.toLowerCase())
   const party=owner||renterRole
   const unresolved=items.filter(i=>i.classification==='INCONCLUSIVE'&&!i.waived).length
   const stepIndex=Math.max(0,FLOW.indexOf(agreement?.status??'DRAFT'))
   const explorerTx=txHash?`${EXPLORER}/tx/${txHash}`:''
-  const value={wallet,client,agreementId:agreementIdState,agreement,items,busy,loading,error,notice,txHash,live,contractLabel,explorerAddress,explorerTx,owner,renterRole,party,unresolved,stepIndex,property,renter,deposit,policy,label,baselineUrl,baselineHash,cap,checkoutUrls,checkoutHashes,setProperty,setRenter,setDeposit,setPolicy,setLabel,setBaselineUrl,setBaselineHash,setCap,setCheckoutUrls,setCheckoutHashes,setAgreementId,setError,connect,refresh,transact,createAgreement,addItem,hashUrl}
+  const value={wallet,client,agreementId:agreementIdState,agreement,items,busy,loading,wrongNetwork,error,notice,txHash,live,contractLabel,explorerAddress,explorerTx,owner,renterRole,party,unresolved,stepIndex,property,renter,deposit,policy,label,baselineUrl,baselineHash,cap,checkoutUrls,checkoutHashes,setProperty,setRenter,setDeposit,setPolicy,setLabel,setBaselineUrl,setBaselineHash,setCap,setCheckoutUrls,setCheckoutHashes,setAgreementId,setError,connect,disconnect,switchNetwork,refresh,transact,createAgreement,addItem,hashUrl}
   return <WearlineContext.Provider value={value}>{children}</WearlineContext.Provider>
 }
 export function useWearline(){const ctx=useContext(WearlineContext);if(!ctx)throw new Error('useWearline must be used within WearlineProvider');return ctx}
