@@ -6,14 +6,23 @@ on:
   pull_request:
 
 jobs:
-  source-invariants:
+  contract-quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m unittest discover -s tests -v
+      - run: python -m pip install -r requirements-test.txt
+      - run: genvm-lint check contracts/Wearline.py
+      - name: Reuse GenVM runner bundle for Direct Mode
+        run: |
+          mkdir -p ~/.cache/gltest-direct
+          cp ~/.cache/genvm-linter/genvm-universal-*.tar.xz ~/.cache/gltest-direct/
+          ls -lh ~/.cache/gltest-direct
+      - run: gltest tests/direct_mode_suite.py -q
+      - run: python -m unittest tests/test_source_invariants.py -v
+      - run: python scripts/check_stale_terms.py
       - run: python -m py_compile contracts/Wearline.py
 
   frontend:
@@ -26,6 +35,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run build
