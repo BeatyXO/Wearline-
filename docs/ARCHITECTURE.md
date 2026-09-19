@@ -35,4 +35,4 @@ The web app is UX, not settlement authority. The contract remains authoritative 
 
 ## Verification
 
-The GenVM linter passes, and `gltest tests/direct_mode_suite.py -q` passes 20 Direct Mode tests without network transactions. GitHub Actions also passes source checks and the frontend build. The canonical StudioNet deployment is source-pinned, and three live agreements have finalized; transaction and balance evidence is in [SUBMISSION.md](../SUBMISSION.md). Agreement `3` demonstrated `UNCHANGED`, `NORMAL_WEAR`, `NEW_DAMAGE`, and `INCONCLUSIVE` together.
+The GenVM linter passes, and `gltest tests/direct_mode_suite.py -q` passes 21 Direct Mode tests without network transactions. GitHub Actions also passes source checks and the frontend build. The canonical StudioNet deployment is source-pinned, and three live agreements have finalized; transaction and balance evidence is in [SUBMISSION.md](../SUBMISSION.md). Agreement `3` demonstrated `UNCHANGED`, `NORMAL_WEAR`, `NEW_DAMAGE`, and `INCONCLUSIVE` together.

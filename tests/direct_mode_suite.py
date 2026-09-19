@@ -253,6 +253,38 @@ def test_inaccessible_evidence_fails_without_classification(deployed, direct_vm,
     assert item.deduction == 0
 
 
+def test_image_framing_mismatch_is_inconclusive_zero_and_blocks_settlement(deployed, direct_vm, direct_alice, direct_bob):
+    import json
+
+    baseline = (ROOT / "demo" / "evidence" / "inconclusive-baseline.png").read_bytes()
+    checkout = (ROOT / "demo" / "evidence" / "inconclusive-checkout.png").read_bytes()
+    baseline_url, checkout_url = "https://evidence.test/framing-base", "https://evidence.test/framing-checkout"
+    agreement_id = _funded_item(
+        deployed, direct_vm, direct_alice, direct_bob,
+        baseline_url=baseline_url, baseline_body=baseline,
+        checkout_url=checkout_url, checkout_body=checkout,
+    )
+    mock_image(direct_vm, baseline_url, baseline, content_type="image/png")
+    mock_image(direct_vm, checkout_url, checkout, content_type="image/png")
+    direct_vm.mock_llm(
+        "You are a neutral property-condition adjudicator",
+        json.dumps({
+            "classification": "INCONCLUSIVE",
+            "severity": 0,
+            "rationale": "Checkout framing and blur prevent reliable comparison with baseline.",
+        }),
+    )
+
+    deployed.adjudicate_item(agreement_id, 0)
+    item = deployed.get_item(agreement_id, 0)
+    assert item.classification == "INCONCLUSIVE"
+    assert item.severity == 0
+    assert item.deduction == 0
+    assert deployed.get_agreement(agreement_id).total_deduction == 0
+    with direct_vm.expect_revert("unwaived inconclusive"):
+        deployed.settle(agreement_id)
+
+
 @pytest.mark.parametrize("status,content_type,error", [
     (302, "image/jpeg", "non-success HTTP status"),
     (200, "text/html", "supported JPEG, PNG, or WebP"),

@@ -40,7 +40,7 @@ The sum of caps must not exceed the deposit. Settlement requires all items to be
 
 ## Adversarial protections and tests
 
-Direct Mode runs against the GenLayer contract runtime without live transactions. `gltest tests/direct_mode_suite.py -q` passed **20 tests**, including authorization and funding rules, post-seal immutability, all four classifications, exact 25/60/100% arithmetic, fail-closed inconclusive behavior, independent validator reassessment, duplicate adjudication/settlement protections, payout arithmetic, and evidence mismatch, inaccessible response, redirects/non-success status, unsupported MIME, identical images, and visible prompt injection.
+Direct Mode runs against the GenLayer contract runtime without live transactions. `gltest tests/direct_mode_suite.py -q` passed **21 tests**, including authorization and funding rules, post-seal immutability, all four classifications, exact 25/60/100% arithmetic, fail-closed inconclusive behavior, independent validator reassessment, duplicate adjudication/settlement protections, payout arithmetic, evidence mismatch and replacement, inaccessible response, redirects/non-success status, unsupported MIME, framing mismatch, identical images, and visible prompt injection.
 
 `genvm-lint check contracts/Wearline.py` passed (3 checks; 13 methods). Nine supplementary source-invariant tests passed. GitHub Actions passed source checks and the frontend production typecheck/build; the latest verified run is linked from the repository's Actions page.
 
