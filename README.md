@@ -64,13 +64,13 @@ cp .env.example .env
 npm run dev
 ```
 
-Until a canonical contract is deployed, the interface opens in **Preview mode** using clearly labeled sample data. Set `VITE_WEARLINE_CONTRACT_ADDRESS` after StudioNet deployment to enable live reads/writes.
+Set `VITE_WEARLINE_CONTRACT_ADDRESS` to the verified StudioNet deployment to enable writes. The current screen still contains preview/sample presentation and is not yet a complete live agreement workflow. Do not present preview figures as on-chain state.
 
 ## Contract development
 
 The contract intentionally follows current GenLayer storage and consensus patterns: storage-safe dataclasses, `TreeMap`, fixed-width integers, storage copied to memory before non-deterministic work, external web/LLM calls inside the consensus block, and side effects only after consensus.
 
-Before final submission, run GenVM lint, Direct Mode tests, StudioNet integration tests, then pin the deployed source commit and record the canonical address/transaction in `DEPLOYMENT.md`.
+The local GenVM linter passed for the current source. Direct Mode and StudioNet lifecycle integration tests remain outstanding; see [SUBMISSION.md](SUBMISSION.md) for verified results and environment limits. Pin the deployed source commit and record the canonical address/transaction in `DEPLOYMENT.md` before calling the application deployed.
 
 ## Evidence safety
 
