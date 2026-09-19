@@ -12,7 +12,7 @@ The owner freezes the property label, renter, policy, inventory, baseline eviden
 
 ## Consensus boundary
 
-For each item the contract fetches baseline and checkout evidence, verifies both frozen SHA-256 digests, then sends exactly those two images to the vision model. Validators independently repeat the same assessment and require exact agreement on `classification` and `severity`.
+For each item the contract fetches baseline and checkout evidence, rejects non-2xx responses and unsupported content types, verifies both frozen SHA-256 digests, then sends exactly those two images to the vision model. Validators independently repeat the same assessment and require exact agreement on `classification` and `severity`.
 
 The accepted classifications are `UNCHANGED`, `NORMAL_WEAR`, `NEW_DAMAGE`, and `INCONCLUSIVE`.
 
@@ -32,3 +32,7 @@ The sum of all item caps must not exceed the deposit before sealing.
 ## Frontend boundary
 
 The web app is UX, not settlement authority. The contract remains authoritative if the frontend is modified or replaced.
+
+## Verification
+
+The GenVM linter passes, and `gltest tests/test_direct.py -q` exercises the deployed contract runtime in Direct Mode without network transactions. This covers authorization, state transitions, deterministic deductions, validator reassessment, and hostile evidence cases. StudioNet deployment and transfer finality require separate live-network proof.

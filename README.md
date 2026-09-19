@@ -70,7 +70,7 @@ Set `VITE_WEARLINE_CONTRACT_ADDRESS` to the verified StudioNet deployment to ena
 
 The contract intentionally follows current GenLayer storage and consensus patterns: storage-safe dataclasses, `TreeMap`, fixed-width integers, storage copied to memory before non-deterministic work, external web/LLM calls inside the consensus block, and side effects only after consensus.
 
-The local GenVM linter passed for the current source. Direct Mode and StudioNet lifecycle integration tests remain outstanding; see [SUBMISSION.md](SUBMISSION.md) for verified results and environment limits. Pin the deployed source commit and record the canonical address/transaction in `DEPLOYMENT.md` before calling the application deployed.
+The local GenVM linter and GenLayer Direct Mode tests pass for the current source. Direct Mode runs against the production contract runtime without sending transactions. StudioNet deployment and lifecycle integration remain separate live-network checks; see [SUBMISSION.md](SUBMISSION.md) for verified results and limits. Pin the deployed source commit and record the canonical address/transaction in `DEPLOYMENT.md` before calling the application deployed.
 
 ## Evidence safety
 
@@ -78,4 +78,4 @@ Wearline treats image text as untrusted data, verifies content hashes before vis
 
 ## Current status
 
-The repository contains the first full contract implementation and frontend. A funded local wallet is still required to perform the canonical StudioNet deployment and end-to-end settlement proof.
+The contract and local Direct Mode suite are implemented. Dedicated owner and renter wallets have been created for StudioNet testing; deployment and end-to-end settlement proof are still pending.

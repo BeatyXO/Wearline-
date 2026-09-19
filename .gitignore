@@ -1,5 +1,8 @@
 node_modules/
 dist/
+.venv/
+artifacts/
+*.tsbuildinfo
 .env
 .env.local
 .DS_Store

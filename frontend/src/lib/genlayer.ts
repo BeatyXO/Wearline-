@@ -1,5 +1,6 @@
 import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
+import { TransactionStatus } from 'genlayer-js/types'
 
 export const CONTRACT_ADDRESS = import.meta.env.VITE_WEARLINE_CONTRACT_ADDRESS?.trim() as `0x${string}` | undefined
 export const HAS_CONTRACT = Boolean(CONTRACT_ADDRESS)
@@ -28,6 +29,7 @@ export async function connectWallet() {
     account: accounts[0] as `0x${string}`,
     provider: window.ethereum as never,
   })
+  await client.connect('studionet')
   return { address: accounts[0] as `0x${string}`, client }
 }
 
@@ -60,11 +62,18 @@ export async function readWearline(client: ReturnType<typeof createClient>, func
 }
 
 export async function waitForWearlineTransaction(client: ReturnType<typeof createClient>, txHash: string) {
-  const tx = await client.waitForTransactionReceipt({ hash: txHash as never })
-  const receipt = tx as { status?: string | number; executionResult?: string | number; result?: string | number }
-  const terminal = [receipt.status, receipt.executionResult, receipt.result].map((value) => String(value ?? '').toLowerCase())
-  if (terminal.some((state) => ['failed', 'revert', 'reverted', 'rejected', 'error', '3', '4'].includes(state))) {
+  // genlayer-js 1.1.8 exposes FINALIZED in its runtime enum and README but
+  // omits it from the wait method's generated status union.
+  const tx = await client.waitForTransactionReceipt({ hash: txHash as never, status: TransactionStatus.FINALIZED as never })
+  const receipt = tx as { statusName?: string; resultName?: string; txExecutionResultName?: string }
+  if (receipt.statusName !== 'FINALIZED') {
+    throw new Error(`Transaction ${txHash} did not reach GenLayer finality (status: ${receipt.statusName}).`)
+  }
+  if (receipt.resultName === 'FAILURE' || receipt.txExecutionResultName === 'FINISHED_WITH_ERROR') {
     throw new Error(`Transaction ${txHash} failed during GenLayer execution.`)
+  }
+  if (receipt.txExecutionResultName !== 'FINISHED_WITH_RETURN') {
+    throw new Error(`Transaction ${txHash} finalized without a successful contract execution result.`)
   }
   return tx
 }

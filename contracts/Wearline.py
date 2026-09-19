@@ -237,8 +237,21 @@ class Wearline(gl.Contract):
         item = gl.storage.copy_to_memory(item_storage)
 
         def assess() -> dict[str, typing.Any]:
-            baseline_bytes = gl.nondet.web.get(item.baseline_url).body
-            checkout_bytes = gl.nondet.web.get(item.checkout_url).body
+            baseline_response = gl.nondet.web.get(item.baseline_url)
+            checkout_response = gl.nondet.web.get(item.checkout_url)
+            supported_image_types = ("image/jpeg", "image/png", "image/webp")
+            for response in (baseline_response, checkout_response):
+                if response.status < 200 or response.status >= 300:
+                    raise gl.vm.UserError("evidence host returned a non-success HTTP status")
+                content_type = response.headers.get("content-type", b"")
+                if isinstance(content_type, bytes):
+                    content_type = content_type.decode("ascii", "ignore")
+                content_type = content_type.split(";", 1)[0].strip().lower()
+                if content_type not in supported_image_types:
+                    raise gl.vm.UserError("evidence must be a supported JPEG, PNG, or WebP image")
+
+            baseline_bytes = baseline_response.body
+            checkout_bytes = checkout_response.body
 
             if hashlib.sha256(baseline_bytes).hexdigest() != item.baseline_sha256:
                 raise gl.vm.UserError("baseline evidence hash mismatch")

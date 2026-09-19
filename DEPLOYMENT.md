@@ -3,7 +3,7 @@
 Target network: **GenLayer StudioNet**  
 Chain ID: **61999**
 
-Canonical deployment has not been performed. The available CLI is configured for StudioNet (`61999`), but no deployment was attempted: the checkout has no Git metadata, outbound GitHub access is unavailable, and the active CLI account is an unrelated project account. Do not treat its presence as authorization to spend its funds.
+Canonical deployment has not been performed. The current checkout is connected to GitHub `main`, the StudioNet CLI reports chain ID `61999`, and dedicated owner and renter wallets have been created. The CLI's fee-estimation command currently fails because its installed SDK does not expose the method it calls. No funds have been transferred and no deployment transaction has been submitted yet.
 
 After local verification, record all of the following in the same commit:
 

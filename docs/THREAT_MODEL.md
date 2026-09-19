@@ -1,7 +1,7 @@
 # Wearline threat model
 
 ## Mutable evidence
-Evidence URLs are paired with frozen SHA-256 digests. Validators hash fetched bytes before vision analysis; changed content fails closed.
+Evidence URLs are paired with frozen SHA-256 digests. Validators hash fetched bytes before vision analysis; changed content fails closed. Non-2xx responses and unsupported MIME types are rejected before image analysis.
 
 ## Prompt injection in images
 The model is explicitly told that visible text is untrusted evidence and never an instruction. Output is constrained to a closed classification/severity space.
@@ -25,4 +25,4 @@ Sealing rejects an agreement when the sum of item caps exceeds the required depo
 Only the registered renter may fund the exact frozen deposit. Settlement changes state before transfer emissions and cannot execute twice.
 
 ## StudioNet verification still required
-Live testing must cover external image failures, size limits, borderline validator convergence, transfer finality, pending-transaction duplication, and full end-to-end settlement.
+Live testing still must confirm redirect behavior and remote image framing/limits, validator convergence on real evidence, transfer finality, pending-transaction handling, and the complete end-to-end settlement lifecycle. Direct Mode covers digest mismatch, inaccessible resources, redirects returning non-success status, unsupported content, identical images, and a prompt-injection image fixture.

@@ -17,14 +17,14 @@ The contract accepts HTTPS evidence URLs and validates 64-character hexadecimal 
 ## Verification completed in this workspace
 
 - `genvm-lint check contracts/Wearline.py`: passed locally (3 checks, 13 methods).
+- `gltest tests/test_direct.py -q`: 20 GenLayer Direct Mode tests passed, including authorization, agreement and funding rules, all classifications and deduction percentages, inconclusive waiver, validator reassessment, settlement arithmetic, and adversarial evidence responses.
 - `python -m unittest discover -s tests -v`: 9 supplementary source-invariant tests passed.
-- `npm run typecheck`: passed after correcting the TypeScript project configuration and updating calls to the installed `genlayer-js` API.
-- `npm run build`: TypeScript passed, but Vite/esbuild could not read a parent directory outside the writable workspace. A production build is therefore not verified.
+- Frontend `npm run typecheck` and `npm run build`: passed in GitHub Actions run 35441773111 for commit `8af51a9656ea4a5934a5af4e742ff04e81f43647`. Further pending edits require a fresh CI run.
 
-These results do not constitute GenLayer Direct Mode lifecycle tests or StudioNet execution tests. `genlayer-test` is not installed in the available environment. Network access to GitHub and the npm registry was unavailable during this run.
+Direct Mode executes contract behavior locally without a StudioNet transaction. It does not prove live validator convergence, wallet transfer behavior, or transaction finality.
 
 ## Deployment and lifecycle proof
 
-No canonical Wearline contract address, deployment transaction, deployed source commit, or source digest is recorded. No live lifecycle transaction hashes or balance proof have been generated. The local GenLayer CLI is configured for StudioNet chain ID 61999, but this alone does not prove a deployment or authorize spending from the unrelated active CLI account.
+No canonical Wearline contract address, deployment transaction, deployed source commit, or source digest is recorded. No live lifecycle transaction hashes or balance proof have been generated. The local GenLayer CLI reports StudioNet chain ID 61999. Dedicated owner and renter accounts exist; no funding transfer or contract deployment has been submitted.
 
 No Vercel URL is recorded. Configure `VITE_WEARLINE_CONTRACT_ADDRESS` with the verified StudioNet contract address after deployment.
