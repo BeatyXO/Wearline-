@@ -288,15 +288,35 @@ def test_model_response_with_extra_field_is_rejected(deployed, direct_vm, direct
     case_id = prepare_item(deployed, direct_vm, direct_alice, direct_bob)
     mock_image(direct_vm, "https://evidence.test/baseline", "baseline")
     mock_image(direct_vm, "https://evidence.test/completion", "completion")
-    mock_verdict(direct_vm, "SATISFIED", confidence=0.99)
+    mock_verdict(direct_vm, "SATISFIED", confidence="high")
     with direct_vm.expect_revert("exactly verdict and reasoning"):
         deployed.verify_item(case_id, 0)
     assert deployed.get_item(case_id, 0).verified is False
 
 
 def test_duplicate_verification_is_rejected(deployed, direct_vm, direct_alice, direct_bob):
-    case_id = arrange_verification(deployed, direct_vm, direct_alice, direct_bob, "SATISFIED")
+    case_id = create_case(deployed, direct_vm, direct_alice, direct_bob)
+    add_item(deployed, case_id, baseline_url="https://evidence.test/base-a", baseline_body="base-a")
+    add_item(deployed, case_id, baseline_url="https://evidence.test/base-b", baseline_body="base-b")
+    deployed.seal_case(case_id)
+    direct_vm.sender = direct_bob
+    deployed.submit_completion(
+        case_id,
+        0,
+        "https://evidence.test/complete-a",
+        hashlib.sha256(b"complete-a").hexdigest(),
+    )
+    deployed.submit_completion(
+        case_id,
+        1,
+        "https://evidence.test/complete-b",
+        hashlib.sha256(b"complete-b").hexdigest(),
+    )
+    mock_image(direct_vm, "https://evidence.test/base-a", "base-a")
+    mock_image(direct_vm, "https://evidence.test/complete-a", "complete-a")
+    mock_verdict(direct_vm, "SATISFIED")
     deployed.verify_item(case_id, 0)
+    assert deployed.get_case(case_id).status == "REVIEWING"
     with direct_vm.expect_revert("item already verified"):
         deployed.verify_item(case_id, 0)
 
