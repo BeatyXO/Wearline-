@@ -78,4 +78,4 @@ Wearline treats image text as untrusted data, verifies content hashes before vis
 
 ## Current status
 
-The canonical contract is deployed and the four-class live lifecycle evidence is recorded. The reviewer-ready live frontend now builds locally. Vercel deployment remains to be attempted; no URL is claimed until verified.
+The canonical contract is deployed and the four-class live lifecycle evidence is recorded. The reviewer-ready live frontend is deployed at [wearline.vercel.app](https://wearline.vercel.app), connected to the canonical StudioNet contract.

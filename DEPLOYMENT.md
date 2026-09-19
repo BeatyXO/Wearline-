@@ -29,13 +29,22 @@ The repository-level [`vercel.json`](vercel.json) configures Vercel for the fron
 | Build command | `npm --prefix frontend run build` |
 | Output directory | `frontend/dist` |
 
+The production frontend is deployed and browser-verified:
+
+| Field | Value |
+| --- | --- |
+| Production URL | [`https://wearline.vercel.app`](https://wearline.vercel.app) |
+| Vercel deployment ID | `dpl_H1cHRYfE52SEFww1oxtyStRQbL4r` |
+| Deployment status | `READY`, target `production` |
+| Source commit | `0df4a6c642b69bf0b8a51a12077b43d3f10cadb0` |
+
 Set this production environment variable to connect the frontend to the canonical contract. The frontend is pinned to StudioNet chain `61999` in code:
 
 ```env
 VITE_WEARLINE_CONTRACT_ADDRESS=0xBB03057Ff1496E7f53a73F88100D855Ed2b7ca06
 ```
 
-The frontend implements the live agreement lifecycle and passes local typecheck and production build. Vercel account verification could not reach the provider from this environment because outbound network access was denied; no deployment or production URL is claimed.
+The live site displays the canonical CA and loads the agreement lookup/create workflow. Vercel's remote production build passed typecheck and Vite build and published the stable `wearline.vercel.app` alias.
 
 ## Verified StudioNet lifecycle
 
