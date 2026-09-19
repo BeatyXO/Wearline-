@@ -65,15 +65,27 @@ export async function waitForWearlineTransaction(client: ReturnType<typeof creat
   // genlayer-js 1.1.8 exposes FINALIZED in its runtime enum and README but
   // omits it from the wait method's generated status union.
   const tx = await client.waitForTransactionReceipt({ hash: txHash as never, status: TransactionStatus.FINALIZED as never })
-  const receipt = tx as { statusName?: string; resultName?: string; txExecutionResultName?: string }
-  if (receipt.statusName !== 'FINALIZED') {
-    throw new Error(`Transaction ${txHash} did not reach GenLayer finality (status: ${receipt.statusName}).`)
+  const receipt = tx as {
+    statusName?: string
+    status_name?: string
+    resultName?: string
+    result_name?: string
+    txExecutionResultName?: string
+    tx_execution_result_name?: string
+    consensus_data?: { leader_receipt?: Array<{ mode?: string; execution_result?: string }> }
   }
-  if (receipt.resultName === 'FAILURE' || receipt.txExecutionResultName === 'FINISHED_WITH_ERROR') {
+  const status = receipt.status_name ?? receipt.statusName
+  const result = receipt.result_name ?? receipt.resultName
+  const leaderResult = receipt.consensus_data?.leader_receipt?.find((entry) => entry.mode === 'leader')?.execution_result
+  const execution = receipt.tx_execution_result_name ?? receipt.txExecutionResultName ?? leaderResult
+  if (status !== 'FINALIZED') {
+    throw new Error(`Transaction ${txHash} did not reach GenLayer finality (status: ${status ?? 'unknown'}).`)
+  }
+  if (result === 'FAILURE' || execution === 'ERROR' || execution === 'FINISHED_WITH_ERROR') {
     throw new Error(`Transaction ${txHash} failed during GenLayer execution.`)
   }
-  if (receipt.txExecutionResultName !== 'FINISHED_WITH_RETURN') {
-    throw new Error(`Transaction ${txHash} finalized without a successful contract execution result.`)
+  if (execution !== 'SUCCESS' && execution !== 'FINISHED_WITH_RETURN') {
+    throw new Error(`Transaction ${txHash} finalized without a successful contract execution result (execution: ${execution ?? 'unknown'}).`)
   }
   return tx
 }

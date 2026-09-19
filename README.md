@@ -64,13 +64,13 @@ cp .env.example .env
 npm run dev
 ```
 
-Set `VITE_WEARLINE_CONTRACT_ADDRESS` to the verified StudioNet deployment to enable writes. The current screen still contains preview/sample presentation and is not yet a complete live agreement workflow. Do not present preview figures as on-chain state.
+Set `VITE_WEARLINE_CONTRACT_ADDRESS=0xBB03057Ff1496E7f53a73F88100D855Ed2b7ca06` to target the verified canonical StudioNet contract. The live workflow reads agreements and inventory from StudioNet and exposes guarded actions for creation, inventory, exact funding, checkout evidence, adjudication, waiver, and settlement.
 
 ## Contract development
 
 The contract intentionally follows current GenLayer storage and consensus patterns: storage-safe dataclasses, `TreeMap`, fixed-width integers, storage copied to memory before non-deterministic work, external web/LLM calls inside the consensus block, and side effects only after consensus.
 
-The local GenVM linter and GenLayer Direct Mode tests pass for the current source. Direct Mode runs against the production contract runtime without sending transactions. StudioNet deployment and lifecycle integration remain separate live-network checks; see [SUBMISSION.md](SUBMISSION.md) for verified results and limits. Pin the deployed source commit and record the canonical address/transaction in `DEPLOYMENT.md` before calling the application deployed.
+The local GenVM linter and GenLayer Direct Mode tests pass. One contract is deployed to StudioNet; source parity and two live lifecycle agreements are verified in [DEPLOYMENT.md](DEPLOYMENT.md) and [SUBMISSION.md](SUBMISSION.md). Direct Mode runs against the contract runtime without sending transactions.
 
 ## Evidence safety
 
@@ -78,4 +78,4 @@ Wearline treats image text as untrusted data, verifies content hashes before vis
 
 ## Current status
 
-The contract and local Direct Mode suite are implemented. Dedicated owner and renter wallets have been created for StudioNet testing; deployment and end-to-end settlement proof are still pending.
+The canonical contract is deployed and the four-class live lifecycle evidence is recorded. The reviewer-ready live frontend now builds locally. Vercel deployment remains to be attempted; no URL is claimed until verified.

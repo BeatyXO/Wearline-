@@ -1,236 +1,106 @@
-import { FormEvent, useMemo, useState } from 'react'
-import {
-  ArrowRight,
-  BadgeCheck,
-  ChevronRight,
-  CircleDollarSign,
-  FileCheck2,
-  Gauge,
-  Image,
-  Landmark,
-  LockKeyhole,
-  Scale,
-  ShieldCheck,
-  Sparkles,
-  Wallet,
-  X,
-} from 'lucide-react'
-import { connectWallet, CONTRACT_ADDRESS, HAS_CONTRACT, shortAddress, writeWearline } from './lib/genlayer'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowRight, BadgeCheck, CircleDollarSign, FileCheck2, Gauge, Image, Landmark, LockKeyhole, RefreshCw, Scale, ShieldCheck, Sparkles, Wallet } from 'lucide-react'
+import { assertStudioNet, connectWallet, CONTRACT_ADDRESS, HAS_CONTRACT, readClient, readWearline, shortAddress, writeWearline } from './lib/genlayer'
+import { sha256File } from './lib/hash'
 
-const sampleItems = [
-  { label: 'Living room flooring', classification: 'NORMAL_WEAR', severity: 0, cap: '1.80 GEN', deduction: '0.00 GEN', rationale: 'Light surface scuffing is visible, with no clear new gouge, break, or material loss.' },
-  { label: 'Bedroom wardrobe', classification: 'NEW_DAMAGE', severity: 2, cap: '2.00 GEN', deduction: '1.20 GEN', rationale: 'Checkout evidence shows a new split at the lower right panel that is absent from the baseline.' },
-  { label: 'Kitchen counter', classification: 'UNCHANGED', severity: 0, cap: '1.50 GEN', deduction: '0.00 GEN', rationale: 'Surface marks and edge condition materially match the baseline image.' },
-  { label: 'Entry door', classification: 'INCONCLUSIVE', severity: 0, cap: '1.25 GEN', deduction: '0.00 GEN', rationale: 'Checkout framing obscures the lower hinge area, so a reliable comparison cannot be made.' },
-]
-
-const flow = ['Draft', 'Sealed', 'Funded', 'Reviewing', 'Ready', 'Settled']
-
-function App() {
-  const [wallet, setWallet] = useState<string>('')
-  const [walletClient, setWalletClient] = useState<any>(null)
-  const [notice, setNotice] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [agreementId, setAgreementId] = useState('1')
-  const [propertyLabel, setPropertyLabel] = useState('')
-  const [renter, setRenter] = useState('')
-  const [deposit, setDeposit] = useState('')
-  const [policy, setPolicy] = useState(
-    'Normal wear includes light scuffs and gradual cosmetic aging from ordinary residential use. New cracks, breaks, burns, missing parts, deep gouges, or material deformation are damage.',
-  )
-
-  const liveMode = HAS_CONTRACT
-  const contractLabel = useMemo(() => (CONTRACT_ADDRESS ? shortAddress(CONTRACT_ADDRESS) : 'Awaiting deployment'), [])
-
-  async function onConnect() {
-    setNotice('')
-    try {
-      const connected = await connectWallet()
-      setWallet(connected.address)
-      setWalletClient(connected.client)
-      setNotice('Wallet connected to StudioNet 61999.')
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Wallet connection failed.')
-    }
-  }
-
-  async function onCreateAgreement(event: FormEvent) {
-    event.preventDefault()
-    if (!liveMode) {
-      setNotice('Preview mode: deploy Wearline and set VITE_WEARLINE_CONTRACT_ADDRESS to enable writes.')
-      return
-    }
-    if (!walletClient) {
-      setNotice('Connect your wallet before creating an agreement.')
-      return
-    }
-    try {
-      setSubmitting(true)
-      const wei = BigInt(Math.round(Number(deposit) * 1e6)) * 10n ** 12n
-      const tx = await writeWearline(walletClient, 'create_agreement', [renter, propertyLabel, wei, policy])
-      setNotice(`Agreement submitted: ${tx}`)
-      setCreating(false)
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Agreement submission failed.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="Wearline home"><span className="brand-mark">W</span><span>Wearline</span></a>
-        <nav className="nav-links" aria-label="Primary navigation">
-          <a href="#agreement">Agreement</a><a href="#evidence">Evidence</a><a href="#settlement">Settlement</a>
-          <a href="https://github.com/BeatyXO/Wearline-" target="_blank" rel="noreferrer">GitHub</a>
-        </nav>
-        <button className="wallet-button" onClick={onConnect}><Wallet size={17} /> {wallet ? shortAddress(wallet) : 'Connect wallet'}</button>
-      </header>
-
-      <main id="top">
-        <section className="hero section-pad">
-          <div className="hero-orb orb-one" /><div className="hero-orb orb-two" />
-          <div className="hero-copy">
-            <div className="eyebrow"><Sparkles size={15} /> GenLayer StudioNet · 61999</div>
-            <h1>Deposits settled by <span>evidence,</span><br />not discretion.</h1>
-            <p>Wearline freezes the rules before move-out, lets GenLayer validators classify visible condition change, and keeps every payout inside deterministic limits.</p>
-            <div className="hero-actions">
-              <button className="primary-button" onClick={() => setCreating(true)}>Create agreement <ArrowRight size={17} /></button>
-              <a className="secondary-button" href="#evidence">See the review flow</a>
-            </div>
-            <div className="trust-row">
-              <span><LockKeyhole size={15} /> Hash-bound evidence</span>
-              <span><ShieldCheck size={15} /> Independent validation</span>
-              <span><Scale size={15} /> Deterministic settlement</span>
-            </div>
-          </div>
-
-          <div className="hero-card glass-card">
-            <div className="hero-card-head">
-              <div><span className="muted-label">Active agreement</span><h3>Harborview · Unit 18B</h3></div>
-              <span className="status-pill reviewing">Reviewing</span>
-            </div>
-            <div className="deposit-ring-wrap"><div className="deposit-ring"><div><strong>8.40</strong><span>GEN locked</span></div></div></div>
-            <div className="mini-grid">
-              <div><span>Items</span><strong>4</strong></div><div><span>Resolved</span><strong>3</strong></div>
-              <div><span>Deduction</span><strong>1.20 GEN</strong></div><div><span>Refund</span><strong>7.20 GEN</strong></div>
-            </div>
-            <div className="contract-strip">
-              <span className={`dot ${liveMode ? 'live' : ''}`} />
-              <div><small>{liveMode ? 'Live contract' : 'Preview mode'}</small><strong>{contractLabel}</strong></div>
-            </div>
-          </div>
-        </section>
-
-        {notice && <div className="notice-bar">{notice}</div>}
-
-        <section className="metric-strip section-pad">
-          <div><Gauge size={21} /><span>Consensus scope</span><strong>2 decision fields</strong></div>
-          <div><Image size={21} /><span>Evidence pair</span><strong>Baseline + checkout</strong></div>
-          <div><CircleDollarSign size={21} /><span>Model payout authority</span><strong>0%</strong></div>
-          <div><BadgeCheck size={21} /><span>Network</span><strong>StudioNet 61999</strong></div>
-        </section>
-
-        <section id="agreement" className="content-section section-pad">
-          <div className="section-heading">
-            <div><span className="kicker">Frozen before the dispute</span><h2>One agreement. One rulebook.</h2></div>
-            <p>Wearline makes the settlement logic inspectable before funds are ever at risk.</p>
-          </div>
-          <div className="agreement-panel glass-card">
-            <div className="agreement-topline">
-              <div><span className="muted-label">Agreement #{agreementId}</span><h3>Harborview · Unit 18B</h3><p>Residential tenancy · evidence policy v1</p></div>
-              <label className="agreement-jump"><span>Agreement ID</span><input value={agreementId} onChange={(e) => setAgreementId(e.target.value.replace(/\D/g, ''))} /></label>
-            </div>
-            <div className="flow-track">
-              {flow.map((step, index) => <div className={`flow-step ${index <= 3 ? 'done' : ''}`} key={step}><div>{index < 3 ? '✓' : index + 1}</div><span>{step}</span></div>)}
-            </div>
-            <div className="rule-grid">
-              <article><LockKeyhole /><span>Deposit</span><strong>8.40 GEN</strong><small>Exact funding required</small></article>
-              <article><FileCheck2 /><span>Inventory</span><strong>4 frozen items</strong><small>Caps total ≤ deposit</small></article>
-              <article><Scale /><span>Damage matrix</span><strong>25 / 60 / 100%</strong><small>Severity 1 / 2 / 3</small></article>
-              <article><ShieldCheck /><span>Inconclusive</span><strong>Fail closed</strong><small>No automatic deduction</small></article>
-            </div>
-          </div>
-        </section>
-
-        <section id="evidence" className="content-section evidence-section section-pad">
-          <div className="section-heading">
-            <div><span className="kicker">Consensus review</span><h2>Compare what changed.</h2></div>
-            <p>The model classifies visible change only. Prices and payouts never enter the prompt.</p>
-          </div>
-          <div className="evidence-layout">
-            <div className="evidence-visual glass-card">
-              <div className="evidence-tabs"><button className="active">Before</button><button>Checkout</button></div>
-              <div className="room-placeholder"><div className="room-window" /><div className="room-sofa" /><div className="room-rug" /><span>Hash-bound baseline evidence</span></div>
-              <div className="hash-line"><LockKeyhole size={14} /> sha256 · 5f6c…2b91</div>
-            </div>
-            <div className="review-list">
-              {sampleItems.map((item, index) => (
-                <article className="review-card" key={item.label}>
-                  <div className="review-index">0{index + 1}</div>
-                  <div className="review-body">
-                    <div className="review-title-row"><h3>{item.label}</h3><span className={`class-pill ${item.classification.toLowerCase().replace('_', '-')}`}>{item.classification.replace('_', ' ')}</span></div>
-                    <p>{item.rationale}</p>
-                    <div className="review-numbers"><span>Severity <strong>{item.severity}</strong></span><span>Frozen cap <strong>{item.cap}</strong></span><span>Deduction <strong>{item.deduction}</strong></span></div>
-                  </div>
-                  <ChevronRight className="row-chevron" size={18} />
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="settlement" className="content-section section-pad">
-          <div className="settlement-panel">
-            <div className="settlement-copy">
-              <span className="kicker light">Deterministic after consensus</span>
-              <h2>The model never touches the payout.</h2>
-              <p>Once validators agree on classification and severity, Wearline applies the frozen matrix on-chain. Inconclusive evidence cannot quietly become a charge.</p>
-              <div className="formula-card">
-                <div><span>Locked deposit</span><strong>8.40 GEN</strong></div><span className="formula-op">−</span>
-                <div><span>Accepted deductions</span><strong>1.20 GEN</strong></div><span className="formula-op">=</span>
-                <div className="formula-result"><span>Renter refund</span><strong>7.20 GEN</strong></div>
-              </div>
-            </div>
-            <div className="settlement-side">
-              <Landmark size={28} /><span>Settlement guard</span><strong>1 unresolved item</strong>
-              <p>Entry door is INCONCLUSIVE. Owner waiver is required before settlement can execute.</p>
-              <button className="settle-button" disabled>Settlement blocked</button>
-            </div>
-          </div>
-        </section>
-
-        <section className="final-cta section-pad">
-          <div><span className="kicker">Wearline primitive</span><h2>Visual judgment where it belongs.<br />Money rules where they belong.</h2></div>
-          <button className="primary-button inverted" onClick={() => setCreating(true)}>Start a new agreement <ArrowRight size={17} /></button>
-        </section>
-      </main>
-
-      <footer className="footer section-pad">
-        <div className="brand"><span className="brand-mark">W</span><span>Wearline</span></div>
-        <p>Built for GenLayer StudioNet · chain 61999 · single Intelligent Contract</p>
-        <a href="https://github.com/BeatyXO/Wearline-" target="_blank" rel="noreferrer">View source ↗</a>
-      </footer>
-
-      {creating && (
-        <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setCreating(false)}>
-          <div className="modal-card">
-            <div className="modal-head"><div><span className="kicker">New agreement</span><h2>Freeze the terms first.</h2></div><button className="icon-button" onClick={() => setCreating(false)} aria-label="Close"><X /></button></div>
-            <form onSubmit={onCreateAgreement}>
-              <label>Property / asset label<input required value={propertyLabel} onChange={(e) => setPropertyLabel(e.target.value)} placeholder="e.g. Harborview · Unit 18B" /></label>
-              <label>Renter wallet<input required value={renter} onChange={(e) => setRenter(e.target.value)} placeholder="0x…" /></label>
-              <label>Required deposit (GEN)<input required type="number" min="0.01" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="8.40" /></label>
-              <label>Frozen normal-wear policy<textarea required rows={5} value={policy} onChange={(e) => setPolicy(e.target.value)} /></label>
-              <div className="modal-note"><ShieldCheck size={18} /> Inventory and per-item deduction caps are added before sealing. Once sealed, they cannot be edited.</div>
-              <button className="primary-button full" disabled={submitting}>{submitting ? 'Submitting…' : liveMode ? 'Create on StudioNet' : 'Preview only — deployment pending'}</button>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+type Raw = Record<string, unknown>
+type Item = { index:number; label:string; baseline_url:string; baseline_sha256:string; max_deduction:bigint; checkout_url:string; checkout_sha256:string; classification:string; severity:number; deduction:bigint; rationale:string; adjudicated:boolean; waived:boolean }
+type Agreement = { id:string; owner:string; renter:string; property_label:string; deposit_required:bigint; deposit_funded:bigint; policy_text:string; status:string; item_count:number; adjudicated_count:number; total_deduction:bigint; sealed:boolean }
+const flow = ['DRAFT','SEALED','FUNDED','REVIEWING','READY_TO_SETTLE','SETTLED']
+const explorer = 'https://explorer-studio.genlayer.com'
+const policyDefault = 'Normal wear includes light scuffs and gradual cosmetic aging from ordinary residential use. New cracks, breaks, burns, missing parts, deep gouges, or material deformation are damage.'
+const str=(v:unknown)=>String(v ?? '')
+const num=(v:unknown)=>Number(v ?? 0)
+function parseGen(value:string):bigint {
+  const match=value.trim().match(/^(\d+)(?:\.(\d{1,18}))?$/)
+  if(!match) throw new Error('Enter a valid GEN amount with up to 18 decimal places.')
+  return BigInt(match[1])*10n**18n+BigInt((match[2]??'').padEnd(18,'0')||'0')
 }
+function gen(value:bigint) { const whole=value/10n**18n, frac=(value%10n**18n).toString().padStart(18,'0').replace(/0+$/,''); return `${whole}${frac?`.${frac}`:''} GEN` }
+function url(value:string) { if(!/^https:\/\//i.test(value.trim())) throw new Error('Evidence URL must use HTTPS.'); return value.trim() }
+function digest(value:string) { const d=value.trim().toLowerCase(); if(!/^[a-f0-9]{64}$/.test(d)) throw new Error('SHA-256 must contain exactly 64 hexadecimal characters.'); return d }
+function App() {
+  const [wallet,setWallet]=useState(''), [client,setClient]=useState<ReturnType<typeof readClient>|any>(null)
+  const [agreementId,setAgreementId]=useState(''),[agreement,setAgreement]=useState<Agreement|null>(null),[items,setItems]=useState<Item[]>([])
+  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[txHash,setTxHash]=useState('')
+  const [property,setProperty]=useState(''),[renter,setRenter]=useState(''),[deposit,setDeposit]=useState(''),[policy,setPolicy]=useState(policyDefault)
+  const [label,setLabel]=useState(''),[baselineUrl,setBaselineUrl]=useState(''),[baselineHash,setBaselineHash]=useState(''),[cap,setCap]=useState('')
+  const [checkoutUrls,setCheckoutUrls]=useState<Record<number,string>>({}),[checkoutHashes,setCheckoutHashes]=useState<Record<number,string>>({})
+  const locked=useRef(false)
+  const live=HAS_CONTRACT
+  const contractLabel=useMemo(()=>CONTRACT_ADDRESS?shortAddress(CONTRACT_ADDRESS):'Contract not configured',[])
+  const explorerAddress=CONTRACT_ADDRESS?`${explorer}/address/${CONTRACT_ADDRESS}`:'#'
 
+  const refresh=useCallback(async(id=agreementId, activeClient=client)=>{
+    if(!live||!id||!activeClient) return
+    setLoading(true);setError('')
+    try {
+      const raw=await readWearline(activeClient,'get_agreement',[id]) as Raw
+      const a:Agreement={id,owner:str(raw.owner),renter:str(raw.renter),property_label:str(raw.property_label),deposit_required:BigInt(str(raw.deposit_required)),deposit_funded:BigInt(str(raw.deposit_funded)),policy_text:str(raw.policy_text),status:str(raw.status),item_count:num(raw.item_count),adjudicated_count:num(raw.adjudicated_count),total_deduction:BigInt(str(raw.total_deduction)),sealed:Boolean(raw.sealed)}
+      const fetched:Item[]=[]
+      for(let i=0;i<a.item_count;i++) { const r=await readWearline(activeClient,'get_item',[id,i]) as Raw; fetched.push({index:i,label:str(r.label),baseline_url:str(r.baseline_url),baseline_sha256:str(r.baseline_sha256),max_deduction:BigInt(str(r.max_deduction)),checkout_url:str(r.checkout_url),checkout_sha256:str(r.checkout_sha256),classification:str(r.classification),severity:num(r.severity),deduction:BigInt(str(r.deduction)),rationale:str(r.rationale),adjudicated:Boolean(r.adjudicated),waived:Boolean(r.waived)}) }
+      setAgreement(a);setItems(fetched);setNotice('Agreement data refreshed from StudioNet.')
+    } catch(e) { setAgreement(null);setItems([]);setError(e instanceof Error?e.message:'Unable to load agreement from StudioNet.') }
+    finally { setLoading(false) }
+  },[agreementId,client,live])
+
+  useEffect(()=>{ if(client&&agreementId) void refresh(agreementId,client) },[client,agreementId,refresh])
+  useEffect(()=>{
+    const provider=window.ethereum as {on?:(name:string,cb:(v:unknown)=>void)=>void;removeListener?:(name:string,cb:(v:unknown)=>void)=>void}|undefined
+    const accounts=(value:unknown)=>{const a=Array.isArray(value)?str(value[0]):'';setWallet(a);setClient(null);setAgreement(null);setItems([])}
+    const chain=()=>{setClient(null);setAgreement(null);setItems([]);setNotice('Wallet network changed. Reconnect on StudioNet 61999.')}
+    provider?.on?.('accountsChanged',accounts);provider?.on?.('chainChanged',chain)
+    return ()=>{provider?.removeListener?.('accountsChanged',accounts);provider?.removeListener?.('chainChanged',chain)}
+  },[])
+
+  async function connect() { setError('');try{const c=await connectWallet();setWallet(c.address);setClient(c.client);setNotice('Wallet connected to StudioNet 61999.')}catch(e){setError(e instanceof Error?e.message:'Wallet connection failed.')} }
+  async function transact(name:string,args:unknown[],value?:bigint) {
+    if(!client) throw new Error('Connect a StudioNet wallet before continuing.')
+    if(locked.current) return
+    locked.current=true;setBusy(true);setError('');setNotice('');setTxHash('')
+    try { const provider=window.ethereum as {request:(a:{method:string})=>Promise<unknown>}|undefined
+      if(!provider) throw new Error('No injected wallet detected.')
+      assertStudioNet(await provider.request({method:'eth_chainId'}))
+      const accounts=await provider.request({method:'eth_accounts'}) as string[]
+      if(!accounts?.[0]||accounts[0].toLowerCase()!==wallet.toLowerCase()) throw new Error('The connected wallet account changed. Reconnect before sending a transaction.')
+      const hash=await writeWearline(client,name,args,value);setTxHash(hash);setNotice(`${name} finalized successfully on StudioNet.`);if(agreementId) await refresh(agreementId,client);return hash }
+    catch(e) { const message=e instanceof Error?e.message:String(e);const match=message.match(/0x[a-fA-F0-9]{64}/);if(match)setTxHash(match[0]);throw e }
+    finally {locked.current=false;setBusy(false)}
+  }
+  async function createAgreement(e:FormEvent) {e.preventDefault();try{assertStudioNet(await (window.ethereum as {request:(a:{method:string})=>Promise<unknown>}).request({method:'eth_chainId'}));const value=parseGen(deposit);if(!/^0x[a-fA-F0-9]{40}$/.test(renter))throw new Error('Enter a valid renter address.');const id=str(await readWearline(client,'get_next_agreement_id',[]));await transact('create_agreement',[renter,property,value,policy]);setAgreementId(id);setNotice(`Agreement #${id} created and finalized.`)}catch(e){setError(e instanceof Error?e.message:String(e))}}
+  async function addItem(e:FormEvent) {e.preventDefault();try{const value=parseGen(cap);if(value<=0n)throw new Error('Item cap must be greater than zero.');const frozen=items.reduce((sum,item)=>sum+item.max_deduction,0n);if(agreement&&frozen+value>agreement.deposit_required)throw new Error('Item caps cannot exceed the frozen deposit.');await transact('add_item',[agreementId,label,url(baselineUrl),digest(baselineHash),value]);setLabel('');setBaselineUrl('');setBaselineHash('');setCap('')}catch(e){setError(e instanceof Error?e.message:String(e))}}
+  async function hashUrl(raw:string,onHash:(s:string)=>void) {try{const response=await fetch(url(raw));if(!response.ok)throw new Error(`Evidence fetch failed (${response.status}). The host must allow browser CORS.`);const blob=await response.blob();if(!['image/jpeg','image/png','image/webp'].includes(blob.type.split(';')[0].toLowerCase()))throw new Error('Evidence must be JPEG, PNG, or WebP.');onHash(await sha256File(new File([blob],'evidence',{type:blob.type})))}catch(e){setError(e instanceof Error?e.message:'Could not hash evidence URL bytes. Enter the verified SHA-256 manually.') }}
+  const owner=Boolean(wallet&&agreement&&wallet.toLowerCase()===agreement.owner.toLowerCase()), renterRole=Boolean(wallet&&agreement&&wallet.toLowerCase()===agreement.renter.toLowerCase()), party=owner||renterRole
+  const unresolved=items.filter(i=>i.classification==='INCONCLUSIVE'&&!i.waived).length
+  const stepIndex=Math.max(0,flow.indexOf(agreement?.status??'DRAFT'))
+  const explorerTx=txHash?`${explorer}/tx/${txHash}`:''
+
+  return <div className="app-shell">
+    <header className="topbar"><a className="brand" href="#top"><span className="brand-mark">W</span><span>Wearline</span></a><nav className="nav-links"><a href="#agreement">Agreement</a><a href="#evidence">Evidence</a><a href="#settlement">Settlement</a><a href="https://github.com/BeatyXO/Wearline-" target="_blank" rel="noreferrer">GitHub</a></nav><button className="wallet-button" onClick={connect}><Wallet size={17}/>{wallet?shortAddress(wallet):'Connect wallet'}</button></header>
+    <main id="top">
+      <section className="hero section-pad"><div className="hero-orb orb-one"/><div className="hero-orb orb-two"/><div className="hero-copy"><div className="eyebrow"><Sparkles size={15}/> GenLayer StudioNet · 61999</div><h1>Deposits settled by <span>evidence,</span><br/>not discretion.</h1><p>Validators classify visible condition change. Frozen rules calculate every payout deterministically.</p><div className="hero-actions"><a className="primary-button" href="#agreement">Open an agreement <ArrowRight size={17}/></a><a className="secondary-button" href="#evidence">Review evidence</a></div><div className="trust-row"><span><LockKeyhole size={15}/> SHA-256 bound</span><span><ShieldCheck size={15}/> Independent validation</span><span><Scale size={15}/> Deterministic settlement</span></div></div>
+        <div className="hero-card glass-card"><div className="hero-card-head"><div><span className="muted-label">Canonical contract</span><h3>{contractLabel}</h3></div><span className="status-pill reviewing">{live?'StudioNet live':'Setup required'}</span></div><div className="deposit-ring-wrap"><div className="deposit-ring"><div><strong>{agreement?gen(agreement.deposit_funded).replace(' GEN',''):'—'}</strong><span>GEN funded</span></div></div></div><div className="mini-grid"><div><span>Items</span><strong>{agreement?.item_count??'—'}</strong></div><div><span>Resolved</span><strong>{agreement?.adjudicated_count??'—'}</strong></div><div><span>Deduction</span><strong>{agreement?gen(agreement.total_deduction):'—'}</strong></div><div><span>Refund</span><strong>{agreement?gen(agreement.deposit_required-agreement.total_deduction):'—'}</strong></div></div><div className="contract-strip"><span className={`dot ${live?'live':''}`}/><div><small>{live?'Deployed on chain 61999':'Live contract unavailable'}</small><a href={explorerAddress} target="_blank" rel="noreferrer"><strong>{contractLabel} ↗</strong></a></div></div></div></section>
+      {(error||notice||txHash)&&<div className={`notice-bar ${error?'error':''}`} role="status">{error||notice}{txHash&&<a href={explorerTx} target="_blank" rel="noreferrer">View transaction {shortAddress(txHash)} ↗</a>}</div>}
+      <section className="metric-strip section-pad"><div><Gauge/><span>Consensus scope</span><strong>Classification + severity</strong></div><div><Image/><span>Evidence pair</span><strong>Baseline + checkout</strong></div><div><CircleDollarSign/><span>Model payout authority</span><strong>0%</strong></div><div><BadgeCheck/><span>Network</span><strong>StudioNet 61999</strong></div></section>
+      <section id="agreement" className="content-section section-pad"><div className="section-heading"><div><span className="kicker">Frozen before the dispute</span><h2>One agreement. One rulebook.</h2></div><p>Load canonical on-chain state or create a new agreement with your connected wallet.</p></div>
+        <div className="agreement-panel glass-card"><div className="agreement-topline"><div><span className="muted-label">{agreement?.id===agreementId?`Agreement #${agreement.id}`:'Agreement lookup'}</span><h3>{agreement?.id===agreementId?agreement.property_label:'Load an agreement'}</h3><p>{agreement?.id===agreementId?`${shortAddress(agreement.owner)} owner · ${shortAddress(agreement.renter)} renter`:'Enter the on-chain agreement ID to begin.'}</p></div><div className="lookup"><label>Agreement ID<input inputMode="numeric" value={agreementId} onChange={e=>{setAgreement(null);setItems([]);setAgreementId(e.target.value.replace(/\D/g,''))}} onKeyDown={e=>e.key==='Enter'&&void refresh()}/></label><button className="secondary-button" disabled={!client||loading||!agreementId} onClick={()=>void refresh()}><RefreshCw size={15}/>{loading?'Loading':'Load'}</button></div></div>
+          {agreement&&agreement.id===agreementId?<><div className="flow-track">{flow.map((step,index)=><div className={`flow-step ${index<=stepIndex?'done':''}`} key={step}><div>{index<stepIndex?'✓':index+1}</div><span>{step.replace('_',' ')}</span></div>)}</div><div className="rule-grid"><article><LockKeyhole/><span>Deposit</span><strong>{gen(agreement.deposit_required)}</strong><small>Fund exact amount · currently {gen(agreement.deposit_funded)}</small></article><article><FileCheck2/><span>Inventory</span><strong>{agreement.item_count} items</strong><small>Caps total {items.reduce((s,i)=>s+i.max_deduction,0n)<=agreement.deposit_required?'within deposit':'exceed deposit'}</small></article><article><Scale/><span>Damage matrix</span><strong>25 / 60 / 100%</strong><small>Severity 1 / 2 / 3</small></article><article><ShieldCheck/><span>Inconclusive</span><strong>{unresolved?'Waiver required':'Fail closed'}</strong><small>{unresolved} unresolved inconclusive item(s)</small></article></div>
+            <div className="workflow-actions"><button className="primary-button" disabled={busy||!owner||agreement.status!=='DRAFT'||!items.length} onClick={()=>void transact('seal_agreement',[agreementId]).catch(e=>setError(e instanceof Error?e.message:String(e)))}>Seal agreement</button><button className="secondary-button" disabled={busy||!renterRole||agreement.status!=='SEALED'} onClick={()=>void transact('fund_agreement',[agreementId],agreement.deposit_required).catch(e=>setError(e instanceof Error?e.message:String(e)))}>Fund exact deposit · {gen(agreement.deposit_required)}</button><button className="primary-button" disabled={busy||!party||agreement.status!=='READY_TO_SETTLE'||unresolved>0} onClick={()=>void transact('settle',[agreementId]).catch(e=>setError(e instanceof Error?e.message:String(e)))}>Settle</button></div>
+          </>:<div className="empty-state">{loading?'Reading agreement from StudioNet…':'No agreement loaded for this ID. Connect a wallet and choose an ID, or create one.'}</div>}
+        </div>
+        {(!agreement||agreement.id!==agreementId||agreement.status==='DRAFT')&&<form className="action-card glass-card" onSubmit={createAgreement}><div><span className="kicker">Create on chain</span><h3>Freeze the terms first</h3><p>Agreement IDs are assigned by the contract. Use a valid renter wallet and a positive deposit.</p></div><div className="form-grid"><label>Property label<input required minLength={3} value={property} onChange={e=>setProperty(e.target.value)}/></label><label>Renter address<input required value={renter} onChange={e=>setRenter(e.target.value)} placeholder="0x…"/></label><label>Deposit (GEN)<input required value={deposit} onChange={e=>setDeposit(e.target.value)} placeholder="1.00"/></label><label className="wide">Frozen normal-wear policy<textarea required minLength={20} value={policy} onChange={e=>setPolicy(e.target.value)}/></label></div><button className="primary-button" disabled={busy||!client||!live}>{busy?'Transaction pending…':'Create agreement'}</button></form>}
+        {agreement&&agreement.id===agreementId&&owner&&agreement.status==='DRAFT'&&<form className="action-card glass-card" onSubmit={addItem}><div><span className="kicker">Inventory baseline</span><h3>Add a hash-bound item</h3><p>Capture or upload the baseline elsewhere, host it over HTTPS, then bind its exact SHA-256 bytes.</p></div><div className="form-grid"><label>Item label<input required minLength={2} value={label} onChange={e=>setLabel(e.target.value)}/></label><label>Maximum deduction (GEN)<input required value={cap} onChange={e=>setCap(e.target.value)} placeholder="0.25"/></label><label className="wide">Baseline HTTPS URL<input required type="url" value={baselineUrl} onChange={e=>setBaselineUrl(e.target.value)} placeholder="https://…"/></label><label className="wide">Baseline SHA-256<input required value={baselineHash} onChange={e=>setBaselineHash(e.target.value)} placeholder="64 hexadecimal characters"/></label></div><div className="workflow-actions"><button type="button" className="secondary-button" disabled={!baselineUrl} onClick={()=>void hashUrl(baselineUrl,setBaselineHash)}>Hash URL bytes</button><label className="file-button">Hash local image<input type="file" accept="image/png,image/jpeg,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(f)setBaselineHash(await sha256File(f))}}/></label><button className="primary-button" disabled={busy||!client}>{busy?'Transaction pending…':'Add item'}</button></div></form>}
+      </section>
+      <section id="evidence" className="content-section evidence-section section-pad"><div className="section-heading"><div><span className="kicker">Consensus review</span><h2>Compare what changed.</h2></div><p>Validators return a condition class and severity. The contract applies the deduction matrix.</p></div>
+        {!agreement||agreement.id!==agreementId?<div className="empty-state">Load an agreement to inspect its inventory and evidence.</div>:<div className="review-list">{items.length===0?<div className="empty-state">No inventory items yet. The owner can add items while the agreement is in draft.</div>:items.map(item=><article className="review-card live-review" key={item.index}><div className="review-index">{String(item.index+1).padStart(2,'0')}</div><div className="review-body"><div className="review-title-row"><h3>{item.label}</h3><span className={`class-pill ${item.classification?item.classification.toLowerCase().replace('_','-'):'inconclusive'}`}>{item.classification||'Awaiting review'}</span></div><div className="image-pair">{[['Baseline',item.baseline_url,item.baseline_sha256],['Checkout',item.checkout_url,item.checkout_sha256]].map(([title,src,hash])=><div key={title}><span>{title}</span>{src?<a href={src} target="_blank" rel="noreferrer"><img src={src} alt={`${title} evidence for ${item.label}`} loading="lazy"/></a>:<div className="image-empty">Checkout evidence not submitted</div>}<code title={hash}>{hash?`sha256 · ${hash.slice(0,12)}…`: 'No digest'}</code></div>)}</div><p>{item.rationale||'The item has not been adjudicated.'}</p><div className="review-numbers"><span>Severity <strong>{item.severity}</strong></span><span>Frozen cap <strong>{gen(item.max_deduction)}</strong></span><span>Deduction <strong>{gen(item.deduction)}</strong></span><span>{item.waived?'Owner waived':'Waiver '+(item.classification==='INCONCLUSIVE'?'required':'not applicable')}</span></div>
+              {!item.adjudicated&&renterRole&&['FUNDED','REVIEWING'].includes(agreement.status)&&<div className="item-form"><label>Checkout HTTPS URL<input type="url" value={checkoutUrls[item.index]??item.checkout_url} onChange={e=>setCheckoutUrls({...checkoutUrls,[item.index]:e.target.value})}/></label><label>Checkout SHA-256<input value={checkoutHashes[item.index]??item.checkout_sha256} onChange={e=>setCheckoutHashes({...checkoutHashes,[item.index]:e.target.value})}/></label><button className="secondary-button" onClick={()=>void hashUrl(checkoutUrls[item.index]??item.checkout_url,h=>setCheckoutHashes({...checkoutHashes,[item.index]:h}))}>Hash URL bytes</button><label className="file-button">Hash local image<input type="file" accept="image/png,image/jpeg,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(f)setCheckoutHashes({...checkoutHashes,[item.index]:await sha256File(f)})}}/></label><button className="primary-button" disabled={busy} onClick={()=>void (async()=>{try{await transact('submit_checkout',[agreementId,item.index,url(checkoutUrls[item.index]??item.checkout_url),digest(checkoutHashes[item.index]??item.checkout_sha256)])}catch(e){setError(e instanceof Error?e.message:String(e))}})()}>Submit checkout</button></div>}
+              {!item.adjudicated&&item.checkout_url&&<button className="primary-button" disabled={busy} onClick={()=>void transact('adjudicate_item',[agreementId,item.index]).catch(e=>setError(e instanceof Error?e.message:String(e)))}>Run consensus adjudication</button>}
+              {owner&&item.adjudicated&&item.classification==='INCONCLUSIVE'&&!item.waived&&<button className="secondary-button" disabled={busy} onClick={()=>void transact('waive_inconclusive',[agreementId,item.index]).catch(e=>setError(e instanceof Error?e.message:String(e)))}>Owner waiver · zero deduction</button>}
+            </div></article>)}</div>}
+      </section>
+      <section id="settlement" className="content-section section-pad"><div className="settlement-panel"><div className="settlement-copy"><span className="kicker light">Deterministic after consensus</span><h2>The model never touches the payout.</h2><p>UNCHANGED and NORMAL_WEAR deduct zero. NEW_DAMAGE deducts 25%, 60%, or 100% of the frozen item cap. INCONCLUSIVE deducts zero and blocks settlement until the owner waives.</p><div className="formula-card"><div><span>Frozen deposit</span><strong>{agreement?gen(agreement.deposit_required):'—'}</strong></div><span className="formula-op">−</span><div><span>Accepted deductions</span><strong>{agreement?gen(agreement.total_deduction):'—'}</strong></div><span className="formula-op">=</span><div className="formula-result"><span>Renter refund</span><strong>{agreement?gen(agreement.deposit_required-agreement.total_deduction):'—'}</strong></div></div></div><div className="settlement-side"><Landmark size={28}/><span>On-chain settlement guard</span><strong>{unresolved?`${unresolved} unresolved item(s)`:agreement?.status??'Load agreement'}</strong><p>{unresolved?'Owner waiver is required before settlement can execute.':agreement?'Only an agreement party can settle, once all items are resolved.':'Settlement figures come from the loaded contract state.'}</p><button className="settle-button" disabled>{agreement?.status==='SETTLED'?'Settled on StudioNet':unresolved?'Settlement blocked':agreement?.status==='READY_TO_SETTLE'?'Ready for authorized party':'Awaiting adjudication'}</button></div></div></section>
+      <section className="final-cta section-pad"><div><span className="kicker">Wearline primitive</span><h2>Visual judgment where it belongs.<br/>Money rules where they belong.</h2></div><a className="primary-button inverted" href="#agreement">Open agreement workflow <ArrowRight size={17}/></a></section>
+    </main><footer className="footer section-pad"><div className="brand"><span className="brand-mark">W</span><span>Wearline</span></div><p>GenLayer StudioNet · chain 61999 · one Intelligent Contract</p><a href={explorerAddress} target="_blank" rel="noreferrer">Contract explorer ↗</a></footer>
+  </div>
+}
 export default App

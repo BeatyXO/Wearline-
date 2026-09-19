@@ -24,5 +24,5 @@ Sealing rejects an agreement when the sum of item caps exceeds the required depo
 ## Funding / settlement integrity
 Only the registered renter may fund the exact frozen deposit. Settlement changes state before transfer emissions and cannot execute twice.
 
-## StudioNet verification still required
-Live testing still must confirm redirect behavior and remote image framing/limits, validator convergence on real evidence, transfer finality, pending-transaction handling, and the complete end-to-end settlement lifecycle. Direct Mode covers digest mismatch, inaccessible resources, redirects returning non-success status, unsupported content, identical images, and a prompt-injection image fixture.
+## Verification boundaries
+The deployed source has been matched byte-for-byte to its pinned repository source and two live StudioNet agreements have completed. Live evidence covered unchanged, normal wear, new damage, inconclusive blocking/waiver, successful transfers, and duplicate settlement rejection. Direct Mode covers baseline/checkout digest mismatch, inaccessible resources, non-success redirects, unsupported content, identical images, and a prompt-injection image fixture. Remaining evidence-host checks include real redirect-to-image behavior, image framing/size extremes, and repeated validator convergence over broader real photographs.
