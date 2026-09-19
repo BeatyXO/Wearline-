@@ -1,81 +1,133 @@
 # Wearline
 
-**Consensus security-deposit settlement on GenLayer StudioNet (chain ID 61999).**
+**Physical remediation requirement verification on GenLayer StudioNet (chain ID `61999`).**
 
-Wearline is a single Intelligent Contract plus a reviewer-facing web application for settling security deposits from immutable before/after visual evidence. GenLayer validators classify **condition change**; deterministic contract logic computes **money**.
+Wearline verifies whether physical repair or remediation work satisfies a requirement that was frozen before the work was completed. It is one Intelligent Contract plus a React/Vite reviewer interface.
 
-## Why Wearline belongs on GenLayer
+## Why GenLayer is required
 
-A normal smart contract can hold a deposit and execute arithmetic, but it cannot reliably decide whether a photographed item is unchanged, normally worn, newly damaged, or impossible to compare. Wearline isolates that non-deterministic judgment and makes every financial consequence deterministic.
+Deterministic contract logic can freeze participants, workflow state, evidence URLs, SHA-256 digests, defect descriptions and exact remediation requirements. It cannot reliably interpret physical visual evidence and decide whether a natural-language completion requirement is actually satisfied.
 
-Each inventory item freezes:
+Wearline puts only that bounded visual judgment through GenLayer. The leader and validators independently fetch the same baseline and completion images, verify their frozen hashes before vision analysis, and assess the same requirement. The only consequential model field compared during validation is `verdict`; prose reasoning is retained for review but does not control state derivation.
 
-- a baseline evidence URL and SHA-256 digest;
-- a maximum deduction cap;
-- the agreement's normal-wear policy.
+## Verdict model
 
-At checkout, the renter submits a second evidence URL and SHA-256 digest. Validators independently fetch the exact bytes, verify both hashes, compare the two images, and agree only on two consequential fields: `classification` and `severity`. The contract derives the deduction from the immutable cap.
+| Verdict | Meaning |
+| --- | --- |
+| `SATISFIED` | Completion evidence reliably demonstrates the frozen requirement is satisfied. |
+| `PARTIALLY_SATISFIED` | Meaningful remediation is visible, but a material part of the requirement remains unsatisfied. |
+| `NOT_SATISFIED` | The frozen requirement has not been materially satisfied. |
+| `INCONCLUSIVE` | The visual evidence cannot support a reliable determination. |
 
-The model **cannot** invent a price, recipient, extra item, new rule, or payout percentage.
+`INCONCLUSIVE` always fails closed. It can never produce `ACCEPTED`.
 
-## Settlement matrix
+## Case model
 
-| Consensus result | Severity | Deterministic deduction |
-| --- | ---: | ---: |
-| `UNCHANGED` | 0 | 0% of item cap |
-| `NORMAL_WEAR` | 0 | 0% of item cap |
-| `INCONCLUSIVE` | 0 | 0% and settlement blocked until owner waives it |
-| `NEW_DAMAGE` | 1 | 25% of item cap |
-| `NEW_DAMAGE` | 2 | 60% of item cap |
-| `NEW_DAMAGE` | 3 | 100% of item cap |
+Each case stores:
 
-The sum of item caps may never exceed the deposit.
+- `requester` and `remediator`;
+- a case title/reference;
+- `DRAFT → SEALED → REVIEWING → VERIFIED` state;
+- registered item and verified-item counts;
+- a derived case result.
 
-## Architecture
+Each item freezes:
 
-- **Network:** GenLayer StudioNet, chain ID `61999`
-- **Contract count:** exactly one (`contracts/Wearline.py`)
-- **Frontend:** React + Vite + TypeScript
-- **SDK:** `genlayer-js`
-- **Wallet:** injected EIP-1193 wallet
-- **Evidence:** HTTPS resources with frozen SHA-256 digests
-- **Consensus:** custom `gl.vm.run_nondet_unsafe` leader/validator flow
-- **Vision input:** exactly two images per adjudication (baseline + checkout)
+- label and defect description;
+- baseline HTTPS URL and SHA-256;
+- exact remediation requirement;
+- later completion HTTPS URL and SHA-256;
+- final verdict and validator reasoning.
 
-## Lifecycle
+Case result is derived after every item is verified:
 
-`DRAFT → SEALED → FUNDED → REVIEWING → READY_TO_SETTLE → SETTLED`
+- all items `SATISFIED` → `ACCEPTED`;
+- any `PARTIALLY_SATISFIED` or `NOT_SATISFIED` → `REMEDIATION_REQUIRED`;
+- any `INCONCLUSIVE` → `REVIEW_REQUIRED`.
 
-1. Owner creates an agreement.
-2. Owner adds inventory and immutable baseline evidence.
-3. Owner seals the agreement. After sealing, item caps and policies cannot change.
-4. Renter funds the exact deposit in GEN.
-5. Renter submits checkout evidence per item.
-6. Any caller may trigger adjudication; validators independently compare the evidence.
-7. Inconclusive items must be explicitly waived by the owner before settlement.
-8. Either party may settle once every item is resolved.
+## Public contract surface
+
+Write methods:
+
+- `create_case(remediator, title)`
+- `add_item(case_id, label, defect_description, baseline_url, baseline_sha256, remediation_requirement)`
+- `seal_case(case_id)`
+- `submit_completion(case_id, item_index, completion_url, completion_sha256)`
+- `verify_item(case_id, item_index)`
+
+View methods:
+
+- `get_case(case_id)`
+- `get_item(case_id, item_index)`
+- `get_item_count(case_id)`
+- `get_next_case_id()`
+
+There are no value-bearing write methods and no transfer-emission interface.
+
+## Evidence and consensus safety
+
+- HTTPS evidence only.
+- JPEG, PNG and WebP only.
+- Both images are fetched inside nondeterministic execution.
+- Both SHA-256 digests are checked before vision analysis.
+- Text visible inside evidence is explicitly treated as untrusted data, never instructions.
+- The model response must contain exactly `verdict` and `reasoning`.
+- The verdict is restricted to the four-value closed enum above.
+- Validators independently rerun the assessment and compare only the verdict.
+- Duplicate completion submission and duplicate item verification are rejected.
+- There is no privileged method that can force an item to `SATISFIED`.
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 
 ## Frontend
 
+The web app preserves the existing Wearline visual identity and StudioNet wallet/finality flow while exposing only the new case model:
+
+- Home overview;
+- case creation, item registration and sealing;
+- side-by-side **BEFORE REMEDIATION** and **COMPLETION EVIDENCE**;
+- completion submission by the registered remediator;
+- GenLayer item verification;
+- derived verification report.
+
+Local development:
+
 ```bash
 cd frontend
-npm install
+npm ci
 cp .env.example .env
 npm run dev
 ```
 
-Set `VITE_WEARLINE_CONTRACT_ADDRESS=0xBB03057Ff1496E7f53a73F88100D855Ed2b7ca06` to target the verified canonical StudioNet contract. The live workflow reads agreements and inventory from StudioNet and exposes guarded actions for creation, inventory, exact funding, checkout evidence, adjudication, waiver, and settlement.
+The contract address is intentionally blank before the fresh deployment:
 
-## Contract development
+```env
+VITE_WEARLINE_CONTRACT_ADDRESS=
+```
 
-The contract intentionally follows current GenLayer storage and consensus patterns: storage-safe dataclasses, `TreeMap`, fixed-width integers, storage copied to memory before non-deterministic work, external web/LLM calls inside the consensus block, and side effects only after consensus.
+Do not insert a historical Wearline address into active configuration.
 
-The local GenVM linter and GenLayer Direct Mode tests pass. One contract is deployed to StudioNet; source parity and three live lifecycle agreements are verified in [DEPLOYMENT.md](DEPLOYMENT.md) and [SUBMISSION.md](SUBMISSION.md), including one four-item lifecycle that returned all four classifications. Direct Mode runs against the contract runtime without sending transactions.
+## Quality checks
 
-## Evidence safety
+```bash
+python -m pip install -r requirements-test.txt
+genvm-lint check contracts/Wearline.py
+gltest tests/direct_mode_suite.py -q
+python -m unittest tests/test_source_invariants.py -v
+python scripts/check_stale_terms.py
+cd frontend && npm ci && npm run typecheck && npm run build
+```
 
-Wearline treats image text as untrusted data, verifies content hashes before vision analysis, rejects non-HTTPS evidence, constrains outputs to a closed enum, and independently reproduces classification decisions at validators. See `docs/THREAT_MODEL.md`.
+The CI workflow runs the same contract, source, terminology and frontend checks.
 
-## Current status
+## Network and deployment status
 
-The canonical contract is deployed and the four-class live lifecycle evidence is recorded. The reviewer-ready live frontend is deployed at [wearline.vercel.app](https://wearline.vercel.app), connected to the canonical StudioNet contract.
+- Network: GenLayer StudioNet
+- Chain ID: `61999` (`0xf22f`)
+- RPC: `https://studio.genlayer.com/api`
+- Explorer: `https://explorer-studio.genlayer.com`
+- Fresh contract address: **PENDING DEPLOYMENT**
+- Fresh deployment transaction: **PENDING DEPLOYMENT**
+- Live remediation lifecycle: **PENDING DEPLOYMENT**
+
+The repository is designed to stop at the pre-deployment boundary until a fresh StudioNet deployment is explicitly authorized.

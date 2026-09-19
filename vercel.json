@@ -4,8 +4,8 @@
   "outputDirectory": "frontend/dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/agreement", "destination": "/index.html" },
+    { "source": "/case", "destination": "/index.html" },
     { "source": "/evidence", "destination": "/index.html" },
-    { "source": "/settlement", "destination": "/index.html" }
+    { "source": "/report", "destination": "/index.html" }
   ]
 }

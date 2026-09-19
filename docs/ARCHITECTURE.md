@@ -1,38 +1,80 @@
 # Wearline architecture
 
-Wearline separates subjective observation from financial authority.
+Wearline is a single Intelligent Contract for requirement-bound physical remediation verification. Its core question is deliberately narrow:
 
-The non-deterministic layer answers only: which closed classification best describes visible condition change, and—only for `NEW_DAMAGE`—which severity bucket applies. Everything else is deterministic contract logic.
+> Does the completion evidence demonstrate satisfaction of the frozen remediation requirement, using the baseline only to understand the originally documented defect?
+
+## State model
+
+A `RemediationCase` stores the requester, remediator, title, state, derived result, item count, verified count, creation timestamp and sealed flag.
+
+A `RemediationItem` stores the item label, defect description, baseline URL and SHA-256, frozen remediation requirement, completion URL and SHA-256, verdict, reasoning and verified flag.
+
+The state path is intentionally small:
+
+`DRAFT → SEALED → REVIEWING → VERIFIED`
+
+The result is separate from lifecycle state:
+
+- `ACCEPTED`
+- `REMEDIATION_REQUIRED`
+- `REVIEW_REQUIRED`
 
 ## Lifecycle
 
-`DRAFT → SEALED → FUNDED → REVIEWING → READY_TO_SETTLE → SETTLED`
+1. The requester creates a case and names the remediator.
+2. The requester registers one or more items with immutable baseline evidence, defect descriptions and exact remediation requirements.
+3. The requester seals the case.
+4. The remediator submits one completion evidence reference per item.
+5. GenLayer verifies each item.
+6. When every item is verified, the contract derives the case result from the closed verdict set.
 
-The owner freezes the property label, renter, policy, inventory, baseline evidence digests and per-item caps before funding. The renter funds the exact deposit and later submits checkout evidence. Validators independently compare each pair. Settlement becomes available only after every item is adjudicated.
+After sealing, no new item can be added. Completion evidence cannot be replaced after it has been submitted, and a verified item cannot be verified again.
 
 ## Consensus boundary
 
-For each item the contract fetches baseline and checkout evidence, rejects non-2xx responses and unsupported content types, verifies both frozen SHA-256 digests, then sends exactly those two images to the vision model. Validators independently repeat the same assessment and require exact agreement on `classification` and `severity`.
+For one item, nondeterministic execution receives only:
 
-The accepted classifications are `UNCHANGED`, `NORMAL_WEAR`, `NEW_DAMAGE`, and `INCONCLUSIVE`.
+1. registered item label;
+2. documented defect description;
+3. immutable baseline image;
+4. frozen natural-language remediation requirement;
+5. completion image.
 
-Rationale is stored for user/reviewer visibility but it is not allowed to change financial logic.
+Both images are fetched inside the nondeterministic function. HTTP status and MIME type are checked, then SHA-256 is recomputed for each image. Vision analysis runs only after both hashes match.
 
-## Deterministic settlement
+The model must return exactly:
 
-- unchanged → 0
-- normal wear → 0
-- inconclusive → 0 and settlement blocked until owner waiver
-- new damage severity 1 → 25% of frozen item cap
-- new damage severity 2 → 60%
-- new damage severity 3 → 100%
+```json
+{"verdict":"SATISFIED","reasoning":"..."}
+```
 
-The sum of all item caps must not exceed the deposit before sealing.
+The accepted verdicts are `SATISFIED`, `PARTIALLY_SATISFIED`, `NOT_SATISFIED`, and `INCONCLUSIVE`.
+
+Validators independently rerun the complete evidence fetch, hash verification and visual assessment. Validation compares only `verdict`; exact prose equality is intentionally unnecessary.
+
+## Result derivation
+
+The deterministic result function scans every final item verdict:
+
+- if any item is `INCONCLUSIVE`, result is `REVIEW_REQUIRED`;
+- otherwise, if any item is `PARTIALLY_SATISFIED` or `NOT_SATISFIED`, result is `REMEDIATION_REQUIRED`;
+- otherwise every item is `SATISFIED`, so result is `ACCEPTED`.
+
+This ordering ensures uncertain visual evidence can never become automatic acceptance.
 
 ## Frontend boundary
 
-The web app is UX, not settlement authority. The contract remains authoritative if the frontend is modified or replaced.
+The React/Vite app is a client of the contract, not an authority. It mirrors the new method surface exactly, performs local URL/hash validation, supports an injected wallet on StudioNet `61999`, waits for finalized transaction execution, and renders case state plus evidence previews.
 
-## Verification
+The frontend configuration deliberately has no default contract address before the fresh deployment. A missing address is displayed as **Pending deployment** rather than silently pointing at an older contract.
 
-The GenVM linter passes, and `gltest tests/direct_mode_suite.py -q` passes 21 Direct Mode tests without network transactions. GitHub Actions also passes source checks and the frontend build. The canonical StudioNet deployment is source-pinned, and three live agreements have finalized; transaction and balance evidence is in [SUBMISSION.md](../SUBMISSION.md). Agreement `3` demonstrated `UNCHANGED`, `NORMAL_WEAR`, `NEW_DAMAGE`, and `INCONCLUSIVE` together.
+## Network boundary
+
+Wearline runtime configuration targets only GenLayer StudioNet:
+
+- chain ID `61999`;
+- RPC `https://studio.genlayer.com/api`;
+- explorer `https://explorer-studio.genlayer.com`.
+
+No alternate GenLayer network is part of the active runtime configuration.

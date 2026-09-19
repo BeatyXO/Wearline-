@@ -7,24 +7,20 @@ OUT = Path(__file__).resolve().parents[1] / "demo" / "evidence"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
-def room_item(kind: str, damaged: bool = False) -> Image.Image:
-    image = Image.new("RGB", (768, 512), "#e9e5df")
+def display_scene(*, crack_main: bool, crack_corner: bool = False) -> Image.Image:
+    image = Image.new("RGB", (768, 512), "#ece9f2")
     draw = ImageDraw.Draw(image)
-    draw.rectangle((0, 370, 768, 512), fill="#c8b8a5")
-    draw.rectangle((90, 205, 660, 370), fill="#637087" if kind == "screen" else "#8d735a")
-    draw.rectangle((118, 232, 632, 344), fill="#d8dce1" if kind == "screen" else "#b19473")
-    if kind == "screen":
-        draw.rectangle((90, 205, 660, 370), outline="#343942", width=12)
-        if damaged:
-            draw.line([(387, 212), (360, 273), (405, 299), (379, 368)], fill="#3b414a", width=7)
-            draw.line([(360, 273), (319, 254), (290, 230)], fill="#3b414a", width=5)
-            draw.line([(405, 299), (464, 276), (508, 245)], fill="#3b414a", width=5)
-            draw.line([(405, 299), (440, 327), (482, 342)], fill="#3b414a", width=5)
-    else:
-        draw.ellipse((235, 235, 270, 270), fill="#ddd0bd")
-        if damaged:
-            draw.line([(145, 241), (218, 262), (281, 248), (352, 277)], fill="#4b392f", width=8)
-            draw.line([(218, 262), (238, 315), (286, 338)], fill="#4b392f", width=6)
+    draw.rectangle((0, 382, 768, 512), fill="#c9c2d4")
+    draw.rounded_rectangle((92, 112, 676, 386), radius=24, fill="#2f3140", outline="#171823", width=10)
+    draw.rectangle((122, 143, 646, 354), fill="#dce8f4")
+    draw.rectangle((345, 386, 423, 420), fill="#3a3b49")
+    draw.rounded_rectangle((287, 414, 481, 438), radius=10, fill="#4a4b59")
+    if crack_main:
+        draw.line([(388, 145), (356, 205), (401, 257), (374, 352)], fill="#3b3d4b", width=8)
+        draw.line([(356, 205), (304, 182), (273, 160)], fill="#3b3d4b", width=5)
+        draw.line([(401, 257), (465, 220), (505, 184)], fill="#3b3d4b", width=5)
+    if crack_corner:
+        draw.line([(124, 302), (165, 278), (199, 296), (230, 271)], fill="#3b3d4b", width=6)
     return image
 
 
@@ -32,40 +28,21 @@ def save(name: str, image: Image.Image) -> None:
     image.save(OUT / f"{name}.png", format="PNG", optimize=True)
 
 
-unchanged = room_item("table")
-save("unchanged-baseline", unchanged)
-save("unchanged-checkout", unchanged.copy())
+# Case A: the documented screen crack is visibly absent after the work.
+save("satisfied-baseline", display_scene(crack_main=True))
+save("satisfied-completion", display_scene(crack_main=False))
 
-wear_base = room_item("table")
-wear_checkout = wear_base.copy()
-d = ImageDraw.Draw(wear_checkout)
-d.line([(145, 250), (164, 254), (180, 252)], fill="#8a796b", width=3)
-d.line([(153, 264), (166, 266)], fill="#948577", width=2)
-save("normal-wear-baseline", wear_base)
-save("normal-wear-checkout", wear_checkout)
+# Case B: the documented defect materially remains.
+save("not-satisfied-baseline", display_scene(crack_main=True))
+save("not-satisfied-completion", display_scene(crack_main=True))
 
-save("new-damage-baseline", room_item("screen", damaged=False))
-save("new-damage-checkout", room_item("screen", damaged=True))
+# Case C: the later image is too obstructed/blurred for a reliable determination.
+inconclusive_base = display_scene(crack_main=True)
+save("inconclusive-baseline", inconclusive_base)
+blurred = inconclusive_base.crop((250, 120, 520, 350)).resize((768, 512)).filter(ImageFilter.GaussianBlur(14))
+overlay = Image.new("RGBA", blurred.size, (30, 30, 40, 90))
+save("inconclusive-completion", Image.alpha_composite(blurred.convert("RGBA"), overlay).convert("RGB"))
 
-ambiguous = room_item("table")
-save("inconclusive-baseline", ambiguous)
-save("inconclusive-checkout", ambiguous.crop((190, 115, 570, 385)).resize((768, 512)).filter(ImageFilter.GaussianBlur(9)))
-
-# A second, explicitly diffuse wear case avoids introducing any discrete scratch line.
-chair = Image.new("RGB", (768, 512), "#e9e5df")
-chair_draw = ImageDraw.Draw(chair)
-chair_draw.rectangle((0, 365, 768, 512), fill="#c8b8a5")
-chair_draw.rectangle((228, 146, 540, 356), fill="#5a4034", outline="#382b25", width=12)
-chair_draw.rounded_rectangle((254, 222, 514, 337), radius=34, fill="#795744", outline="#48352a", width=7)
-chair_draw.rounded_rectangle((269, 160, 499, 242), radius=30, fill="#795744", outline="#48352a", width=7)
-chair_draw.line([(286, 340), (270, 424)], fill="#382b25", width=18)
-chair_draw.line([(482, 340), (500, 424)], fill="#382b25", width=18)
-save("normal-wear-v2-baseline", chair)
-
-worn = chair.copy()
-fade = Image.new("RGBA", worn.size, (0, 0, 0, 0))
-fade_draw = ImageDraw.Draw(fade)
-fade_draw.ellipse((315, 251, 454, 321), fill=(205, 174, 145, 48))
-fade = fade.filter(ImageFilter.GaussianBlur(20))
-worn = Image.alpha_composite(worn.convert("RGBA"), fade).convert("RGB")
-save("normal-wear-v2-checkout", worn)
+# Case D: substantial work is visible, but a material crack remains at the lower-left edge.
+save("partially-satisfied-baseline", display_scene(crack_main=True, crack_corner=True))
+save("partially-satisfied-completion", display_scene(crack_main=False, crack_corner=True))

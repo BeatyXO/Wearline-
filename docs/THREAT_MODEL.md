@@ -1,28 +1,41 @@
 # Wearline threat model
 
-## Mutable evidence
-Evidence URLs are paired with frozen SHA-256 digests. Validators hash fetched bytes before vision analysis; changed content fails closed. Non-2xx responses and unsupported MIME types are rejected before image analysis.
+## Mutable remote evidence
 
-## Prompt injection in images
-The model is explicitly told that visible text is untrusted evidence and never an instruction. Output is constrained to a closed classification/severity space.
+Each evidence URL is paired with a frozen SHA-256. Validators fetch the remote bytes and recompute the digest before vision analysis. Changed bytes fail closed.
 
-## Model invents money
-The model never returns a repair price or payout. Deductions are derived only from frozen item caps and the deterministic 25/60/100% matrix.
+## Unsupported or unavailable evidence
 
-## Leader-only judgment
-Validators independently fetch and reassess the evidence. Validation requires equality of the consequential classification and severity fields.
+Non-success HTTP responses and unsupported MIME types are rejected before model execution. A failed external fetch never becomes a successful remediation verdict.
+
+## Prompt injection inside images
+
+The verification prompt explicitly states that all visible image text is untrusted evidence and never an instruction. The model is restricted to one frozen verification question and a closed verdict vocabulary.
+
+## Requirement drift
+
+The exact remediation requirement is registered before the case is sealed. Verification instructs the model not to invent, expand or substitute requirements. No post-seal write method can alter the requirement.
+
+## Evidence substitution
+
+Baseline evidence is frozen at item registration. Completion evidence can be submitted only by the registered remediator and cannot be overwritten after submission. Both references are hash-bound.
+
+## Leader-only interpretation
+
+Validators independently rerun the complete assessment. Consensus validation compares the consequential `verdict`, while reasoning remains explanatory and does not require byte-for-byte equality.
 
 ## Ambiguous photography
-`INCONCLUSIVE` is first-class: zero deduction and settlement blocked. Owner waiver can only reduce owner recovery.
 
-## Cap inflation
-Items and caps can only be registered before sealing. Sealed agreements accept no new inventory.
+`INCONCLUSIVE` is a first-class fail-closed outcome. Once all items are verified, any `INCONCLUSIVE` forces the case result to `REVIEW_REQUIRED`.
 
-## Over-allocation
-Sealing rejects an agreement when the sum of item caps exceeds the required deposit.
+## Unauthorized success override
 
-## Funding / settlement integrity
-Only the registered renter may fund the exact frozen deposit. Settlement changes state before transfer emissions and cannot execute twice.
+There is no privileged write method that can directly set an item verdict or case result. Item verdicts are stored only after GenLayer verification, and the final case result is derived deterministically from those verdicts.
 
-## Verification boundaries
-The deployed source has been matched byte-for-byte to its pinned repository source and three live StudioNet agreements have completed. A four-item lifecycle demonstrated all four classes together, inconclusive blocking/waiver, successful transfers, and exact balances; duplicate settlement rejection was also verified. Direct Mode covers baseline/checkout digest mismatch and remote replacement, inaccessible resources, non-success redirects, unsupported content, framing mismatch, identical images, and a prompt-injection image fixture. Further resilience work could test larger image sizes and repeated validator convergence over a wider range of real photographs.
+## Duplicate processing
+
+A second completion submission for the same item is rejected. A second verification of an already verified item is also rejected.
+
+## Frontend trust
+
+The web interface is not authoritative. Contract authorization and state checks remain effective if the interface is modified or replaced.
